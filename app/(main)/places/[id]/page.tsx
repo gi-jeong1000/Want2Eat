@@ -279,15 +279,6 @@ export default function PlaceDetailPage() {
 
       alert("공유 기능은 준비 중입니다. 곧 사용할 수 있습니다!");
       throw new Error("공유 기능 준비 중");
-
-      // 공유 생성
-      const { error: shareError } = await supabase.from("place_shares").insert({
-        place_id: params.id as string,
-        shared_by: userId,
-        shared_with: targetUser.id,
-      });
-
-      if (shareError) throw shareError;
     },
     onSuccess: () => {
       setShareEmail("");
