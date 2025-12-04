@@ -44,8 +44,6 @@ export default function HomePage() {
     },
   });
 
-  const [mapError, setMapError] = useState<string | null>(null);
-
   useEffect(() => {
     if (!mapRef.current) return;
 
