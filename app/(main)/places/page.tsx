@@ -61,12 +61,15 @@ export default function PlacesPage() {
         .from("place_posts")
         .select("*");
 
+      const imagesDataTyped = (imagesData || []) as any[];
+      const postsDataTyped = (postsData || []) as any[];
+      
       const placesWithImages: PlaceWithImages[] = (placesData as Place[]).map(
         (place) => ({
           ...place,
-          images: imagesData.filter((img) => img.place_id === place.id),
+          images: imagesDataTyped.filter((img) => img.place_id === place.id),
           posts:
-            postsData
+            postsDataTyped
               ?.filter((post) => post.place_id === place.id)
               .map((post) => ({
                 ...post,

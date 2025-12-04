@@ -87,20 +87,22 @@ export default function PlaceDetailPage() {
       // 포스팅 이미지 가져오기
       let postsWithImages: PlacePostWithImages[] = [];
       if (posts && posts.length > 0) {
-        const postIds = posts.map((p) => p.id);
+        const postsData = posts as any[];
+        const postIds = postsData.map((p) => p.id);
         const { data: postImages } = await supabase
           .from("place_post_images")
           .select("*")
           .in("post_id", postIds);
 
-        postsWithImages = posts.map((post) => ({
+        const postImagesData = (postImages || []) as any[];
+        postsWithImages = postsData.map((post) => ({
           ...post,
-          images: postImages?.filter((img) => img.post_id === post.id) || [],
+          images: postImagesData.filter((img) => img.post_id === post.id) || [],
         }));
       }
 
       return {
-        ...data,
+        ...(data as any),
         images: images || [],
         posts: postsWithImages,
       } as PlaceWithImages;
@@ -124,12 +126,14 @@ export default function PlaceDetailPage() {
         throw new Error("Supabase가 설정되지 않았습니다.");
       }
 
-      const { data, error } = await supabase
-        .from("places")
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString(),
-        })
+      const updateData = {
+        ...updates,
+        updated_at: new Date().toISOString(),
+      } as any;
+
+      // @ts-ignore - Supabase 타입 추론 문제
+      const { data, error } = await (supabase.from("places") as any)
+        .update(updateData)
         .eq("id", params.id)
         .select()
         .single();
@@ -208,17 +212,20 @@ export default function PlaceDetailPage() {
           title: data.title,
           content: data.content,
           visited_at: data.visited_at,
-        })
+        } as any)
         .select()
         .single();
 
       if (postError) throw postError;
 
+      // 타입 단언
+      const postData = post as { id: string } | null;
+
       // 이미지 업로드
-      if (data.images.length > 0 && post) {
+      if (data.images.length > 0 && postData) {
         const uploadPromises = data.images.map(async (file) => {
           const fileExt = file.name.split(".").pop();
-          const fileName = `posts/${post.id}/${Date.now()}.${fileExt}`;
+          const fileName = `posts/${postData.id}/${Date.now()}.${fileExt}`;
 
           const { error: uploadError } = await supabase.storage
             .from("place-images")
@@ -231,7 +238,7 @@ export default function PlaceDetailPage() {
           } = supabase.storage.from("place-images").getPublicUrl(fileName);
 
           return {
-            post_id: post.id,
+            post_id: postData.id,
             image_url: publicUrl,
           };
         });
@@ -240,7 +247,7 @@ export default function PlaceDetailPage() {
 
         const { error: imagesError } = await supabase
           .from("place_post_images")
-          .insert(imageData);
+          .insert(imageData as any);
 
         if (imagesError) throw imagesError;
       }
