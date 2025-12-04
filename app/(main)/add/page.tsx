@@ -86,17 +86,20 @@ export default function AddPlacePage() {
           rating: data.rating,
           comment: data.comment,
           status: data.status,
-        })
+        } as any)
         .select()
         .single();
 
       if (placeError) throw placeError;
 
+      // 타입 단언
+      const placeData = place as { id: string } | null;
+
       // 이미지 업로드
-      if (data.images.length > 0 && place) {
+      if (data.images.length > 0 && placeData) {
         const uploadPromises = data.images.map(async (file) => {
           const fileExt = file.name.split(".").pop();
-          const fileName = `${place.id}/${Date.now()}.${fileExt}`;
+          const fileName = `${placeData.id}/${Date.now()}.${fileExt}`;
 
           const { error: uploadError } = await supabase.storage
             .from("place-images")
@@ -109,7 +112,7 @@ export default function AddPlacePage() {
           } = supabase.storage.from("place-images").getPublicUrl(fileName);
 
           return {
-            place_id: place.id,
+            place_id: placeData.id,
             image_url: publicUrl,
           };
         });
@@ -118,7 +121,7 @@ export default function AddPlacePage() {
 
         const { error: imagesError } = await supabase
           .from("place_images")
-          .insert(imageData);
+          .insert(imageData as any);
 
         if (imagesError) throw imagesError;
       }
