@@ -43,8 +43,19 @@ export default function PlaceDetailPage() {
   const [shareEmail, setShareEmail] = useState("");
   const [showShareForm, setShowShareForm] = useState(false);
 
+  // params.id를 안전하게 처리
+  const placeId = typeof params.id === "string" ? params.id : params.id?.[0];
+
+  if (!placeId) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">장소 ID가 없습니다.</p>
+      </div>
+    );
+  }
+
   const { data: place, isLoading } = useQuery({
-    queryKey: ["place", params.id],
+    queryKey: ["place", placeId],
     queryFn: async () => {
       // 환경 변수가 없으면 null 반환
       if (
@@ -57,7 +68,7 @@ export default function PlaceDetailPage() {
       const { data, error } = await supabase
         .from("places")
         .select("*")
-        .eq("id", params.id)
+        .eq("id", placeId)
         .single();
 
       if (error) {
@@ -68,7 +79,7 @@ export default function PlaceDetailPage() {
       const { data: images, error: imagesError } = await supabase
         .from("place_images")
         .select("*")
-        .eq("place_id", params.id);
+        .eq("place_id", placeId);
 
       if (imagesError) {
         console.error("이미지 조회 오류:", imagesError);
@@ -77,7 +88,7 @@ export default function PlaceDetailPage() {
       const { data: posts, error: postsError } = await supabase
         .from("place_posts")
         .select("*")
-        .eq("place_id", params.id)
+        .eq("place_id", placeId)
         .order("visited_at", { ascending: false });
 
       if (postsError) {
@@ -134,7 +145,7 @@ export default function PlaceDetailPage() {
       // @ts-ignore - Supabase 타입 추론 문제
       const { data, error } = await (supabase.from("places") as any)
         .update(updateData)
-        .eq("id", params.id)
+        .eq("id", placeId)
         .select()
         .single();
 
@@ -142,7 +153,7 @@ export default function PlaceDetailPage() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["place", params.id] });
+      queryClient.invalidateQueries({ queryKey: ["place", placeId] });
       queryClient.invalidateQueries({ queryKey: ["places"] });
       setIsEditing(false);
     },
@@ -169,13 +180,13 @@ export default function PlaceDetailPage() {
       }
 
       // place_images 테이블에서 삭제
-      await supabase.from("place_images").delete().eq("place_id", params.id);
+      await supabase.from("place_images").delete().eq("place_id", placeId);
 
       // places 테이블에서 삭제
       const { error } = await supabase
         .from("places")
         .delete()
-        .eq("id", params.id);
+        .eq("id", placeId);
 
       if (error) throw error;
     },
@@ -207,7 +218,7 @@ export default function PlaceDetailPage() {
       const { data: post, error: postError } = await supabase
         .from("place_posts")
         .insert({
-          place_id: params.id as string,
+          place_id: placeId,
           user_id: userId,
           title: data.title,
           content: data.content,
@@ -255,7 +266,7 @@ export default function PlaceDetailPage() {
       return post;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["place", params.id] });
+      queryClient.invalidateQueries({ queryKey: ["place", placeId] });
       queryClient.invalidateQueries({ queryKey: ["places"] });
       setShowPostForm(false);
     },
