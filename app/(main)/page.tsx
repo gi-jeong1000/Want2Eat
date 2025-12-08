@@ -70,13 +70,22 @@ export default function HomePage() {
           return;
         }
 
-        const mapInstance = new window.naver.maps.Map(mapRef.current, {
-          center: new window.naver.maps.LatLng(37.5665, 126.978),
-          zoom: 13,
-        });
+        try {
+          const mapInstance = new window.naver.maps.Map(mapRef.current, {
+            center: new window.naver.maps.LatLng(37.5665, 126.978),
+            zoom: 13,
+          });
 
-        setMap(mapInstance);
-        setMapError(null);
+          // 지도 생성 성공 확인
+          if (mapInstance) {
+            setMap(mapInstance);
+            setMapError(null);
+          } else {
+            throw new Error("지도 인스턴스 생성 실패");
+          }
+        } catch (mapError: any) {
+          throw new Error(`지도 생성 실패: ${mapError.message || "알 수 없는 오류"}`);
+        }
       } catch (error: any) {
         const errorMsg = error.message || "지도 초기화 실패";
         console.error("지도 초기화 실패:", errorMsg);

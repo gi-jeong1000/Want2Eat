@@ -36,12 +36,17 @@ export function loadNaverMapScript(): Promise<void> {
 
     script.onload = () => {
       clearTimeout(timeout);
-      // 인증 실패 체크
-      if (window.naver && window.naver.maps) {
-        resolve();
-      } else {
-        reject(new Error("네이버 지도 API 인증 실패. Client ID와 도메인 설정을 확인하세요."));
-      }
+      // 약간의 지연 후 인증 실패 체크 (스크립트가 완전히 로드될 때까지 대기)
+      setTimeout(() => {
+        if (window.naver && window.naver.maps) {
+          resolve();
+        } else {
+          // 인증 실패 시 에러 메시지 확인
+          const errorElement = document.querySelector('.naver-map-error');
+          const errorMessage = errorElement?.textContent || "네이버 지도 API 인증 실패";
+          reject(new Error(`${errorMessage}. Client ID와 서비스 URL 설정을 확인하세요.`));
+        }
+      }, 100);
     };
     
     script.onerror = () => {

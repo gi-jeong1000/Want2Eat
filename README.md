@@ -12,7 +12,7 @@
 
 ## 기술 스택
 
-- **Frontend**: Next.js 14 (App Router), TypeScript, Tailwind CSS, shadcn/ui
+- **Frontend**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS, shadcn/ui
 - **State Management**: React Query, Zustand
 - **Database**: Supabase (PostgreSQL)
 - **Storage**: Supabase Storage

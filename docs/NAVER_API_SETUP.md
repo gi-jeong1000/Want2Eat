@@ -14,13 +14,14 @@
 3. 설정:
    - **Application 이름**: `Want2Eat Map API` (원하는 이름)
    - **Service 선택**: **Maps** 선택
+   - **API 선택**: **Dynamic Map**만 선택하면 됩니다 (Geocoding, Reverse Geocoding 등은 선택하지 않아도 됨)
    - **환경 추가**: 
-     - **환경이름**: `Web` (또는 원하는 이름)
-     - **서비스 URL**: `http://localhost:3000` (개발용)
+     - **환경이름**: `Production` (또는 원하는 이름)
+     - **서비스 URL**: `https://your-app.vercel.app` (실제 Vercel 도메인, 반드시 https://로 시작)
      - **환경 추가** 버튼 클릭
-     - 배포 후에는 Vercel URL도 추가: `https://your-app.vercel.app`
+     - 로컬 개발용으로 `http://localhost:3000`도 추가 가능 (선택사항)
 4. "등록" 클릭
-5. **Client ID** 복사해두기
+5. **Client ID** 복사해두기 (Secret은 필요 없음)
 
 ## 3. 검색 API Application 등록
 
