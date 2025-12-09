@@ -1,6 +1,7 @@
 declare global {
   interface Window {
     naver: any;
+    navermap_authFailure?: () => void;
   }
 }
 
@@ -25,10 +26,20 @@ export function loadNaverMapScript(): Promise<void> {
       existingScript.remove();
     }
 
+    // 인증 실패 콜백 함수 설정 (공식 문서 권장 방식)
+    window.navermap_authFailure = () => {
+      reject(
+        new Error(
+          "네이버 지도 API 인증 실패. Client ID와 서비스 URL 설정을 확인하세요."
+        )
+      );
+    };
+
     const script = document.createElement("script");
-    script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${clientId}`;
+    // 최신 API: ncpClientId → ncpKeyId로 변경됨
+    script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${clientId}`;
     script.async = true;
-    
+
     // 타임아웃 설정 (10초)
     const timeout = setTimeout(() => {
       reject(new Error("네이버 지도 스크립트 로드 타임아웃"));
@@ -39,21 +50,33 @@ export function loadNaverMapScript(): Promise<void> {
       // 약간의 지연 후 인증 실패 체크 (스크립트가 완전히 로드될 때까지 대기)
       setTimeout(() => {
         if (window.naver && window.naver.maps) {
+          // 성공 시 인증 실패 콜백 제거
+          delete window.navermap_authFailure;
           resolve();
         } else {
           // 인증 실패 시 에러 메시지 확인
-          const errorElement = document.querySelector('.naver-map-error');
-          const errorMessage = errorElement?.textContent || "네이버 지도 API 인증 실패";
-          reject(new Error(`${errorMessage}. Client ID와 서비스 URL 설정을 확인하세요.`));
+          const errorElement = document.querySelector(".naver-map-error");
+          const errorMessage =
+            errorElement?.textContent || "네이버 지도 API 인증 실패";
+          reject(
+            new Error(
+              `${errorMessage}. Client ID와 서비스 URL 설정을 확인하세요.`
+            )
+          );
         }
       }, 100);
     };
-    
+
     script.onerror = () => {
       clearTimeout(timeout);
-      reject(new Error("네이버 지도 스크립트 로드 실패. 네트워크 오류 또는 인증 실패일 수 있습니다."));
+      delete window.navermap_authFailure;
+      reject(
+        new Error(
+          "네이버 지도 스크립트 로드 실패. 네트워크 오류 또는 인증 실패일 수 있습니다."
+        )
+      );
     };
-    
+
     document.head.appendChild(script);
   });
 }
