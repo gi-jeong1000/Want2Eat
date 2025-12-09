@@ -1,27 +1,29 @@
 import { NaverSearchResponse, NaverPlace } from "@/types";
 
 export async function searchPlaces(query: string): Promise<NaverPlace[]> {
-  const clientId = process.env.NEXT_PUBLIC_NAVER_SEARCH_CLIENT_ID;
-  const clientSecret = process.env.NEXT_PUBLIC_NAVER_SEARCH_CLIENT_SECRET;
-
-  if (!clientId || !clientSecret) {
-    throw new Error("네이버 검색 API 키가 설정되지 않았습니다.");
-  }
-
-  const url = `https://openapi.naver.com/v1/search/local.json?query=${encodeURIComponent(query)}&display=10&sort=random`;
-
-  const response = await fetch(url, {
+  // 서버 사이드 API 라우트를 통해 검색 (CORS 문제 해결)
+  const response = await fetch(`/api/search`, {
+    method: "POST",
     headers: {
-      "X-Naver-Client-Id": clientId,
-      "X-Naver-Client-Secret": clientSecret,
+      "Content-Type": "application/json",
     },
+    body: JSON.stringify({ query }),
   });
 
   if (!response.ok) {
-    throw new Error("네이버 검색 API 호출에 실패했습니다.");
+    const errorData = await response.json().catch(() => ({}));
+    const errorMessage =
+      errorData.error ||
+      `검색 API 호출 실패 (${response.status}: ${response.statusText})`;
+    throw new Error(errorMessage);
   }
 
   const data: NaverSearchResponse = await response.json();
+  
+  if (!data.items || !Array.isArray(data.items)) {
+    throw new Error("검색 결과 형식이 올바르지 않습니다.");
+  }
+
   return data.items;
 }
 

@@ -41,9 +41,10 @@ export default function AddPlacePage() {
     try {
       const results = await searchPlaces(searchQuery);
       setSearchResults(results);
-    } catch (error) {
+    } catch (error: any) {
       console.error("검색 실패:", error);
-      alert("장소 검색에 실패했습니다. 네이버 검색 API 키를 확인해주세요.");
+      const errorMessage = error.message || "장소 검색에 실패했습니다.";
+      alert(`검색 실패: ${errorMessage}\n\n네이버 검색 API 키와 서비스 URL 설정을 확인해주세요.`);
     } finally {
       setIsSearching(false);
     }

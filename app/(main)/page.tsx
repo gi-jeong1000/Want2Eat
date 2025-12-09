@@ -310,9 +310,12 @@ export default function HomePage() {
       const results = await searchPlaces(searchQuery);
       setSearchResults(results);
       setShowSearchResults(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error("검색 실패:", error);
-      alert("장소 검색에 실패했습니다.");
+      const errorMessage = error.message || "장소 검색에 실패했습니다.";
+      alert(
+        `검색 실패: ${errorMessage}\n\n네이버 검색 API 키와 서비스 URL 설정을 확인해주세요.`
+      );
     } finally {
       setIsSearching(false);
     }
@@ -412,7 +415,7 @@ export default function HomePage() {
     !process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID.includes("your_");
 
   return (
-    <div className="relative" style={{ height: "calc(100vh - 64px)" }}>
+    <div className="relative md:h-[calc(100vh-64px)] h-[calc(100vh-128px)]">
       {hasMapApi ? (
         <>
           {mapError ? (
