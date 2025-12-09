@@ -362,6 +362,7 @@ export default function HomePage() {
       setSearchError(null);
       const results = await searchPlaces(searchQuery);
       setSearchResults(results);
+      // 검색 결과가 없어도 카드를 표시
       setShowSearchResults(true);
       if (results.length === 0) {
         setSearchError("검색 결과가 없습니다.");
@@ -371,6 +372,7 @@ export default function HomePage() {
       const errorMessage = error.message || "장소 검색에 실패했습니다.";
       setSearchError(errorMessage);
       setSearchResults([]);
+      // 에러가 발생해도 카드를 표시하여 메시지를 보여줌
       setShowSearchResults(true);
     } finally {
       setIsSearching(false);
@@ -677,82 +679,83 @@ export default function HomePage() {
                       {/* 검색 결과 리스트 */}
                       {searchResults.length > 0 && (
                         <div className="space-y-2">
-                        {searchResults.map((place) => {
-                          return (
-                            <Card
-                              key={place.id}
-                              className="cursor-pointer hover:bg-accent transition-colors"
-                              onClick={() => {
-                                // 지도 중심 이동
-                                if (map && window.kakao) {
-                                  const moveLatLon =
-                                    new window.kakao.maps.LatLng(
-                                      parseFloat(place.y),
-                                      parseFloat(place.x)
-                                    );
-                                  map.setCenter(moveLatLon);
-                                  map.setLevel(3);
-                                }
-                              }}
-                            >
-                              <CardContent className="p-3">
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="flex-1 min-w-0">
-                                    <h4 className="font-semibold text-sm mb-1 truncate">
-                                      {place.place_name}
-                                    </h4>
-                                    <p className="text-xs text-muted-foreground line-clamp-1">
-                                      {place.road_address_name ||
-                                        place.address_name}
-                                    </p>
-                                    {place.category_name && (
-                                      <p className="text-xs text-muted-foreground mt-1">
-                                        {place.category_name}
+                          {searchResults.map((place) => {
+                            return (
+                              <Card
+                                key={place.id}
+                                className="cursor-pointer hover:bg-accent transition-colors"
+                                onClick={() => {
+                                  // 지도 중심 이동
+                                  if (map && window.kakao) {
+                                    const moveLatLon =
+                                      new window.kakao.maps.LatLng(
+                                        parseFloat(place.y),
+                                        parseFloat(place.x)
+                                      );
+                                    map.setCenter(moveLatLon);
+                                    map.setLevel(3);
+                                  }
+                                }}
+                              >
+                                <CardContent className="p-3">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex-1 min-w-0">
+                                      <h4 className="font-semibold text-sm mb-1 truncate">
+                                        {place.place_name}
+                                      </h4>
+                                      <p className="text-xs text-muted-foreground line-clamp-1">
+                                        {place.road_address_name ||
+                                          place.address_name}
                                       </p>
-                                    )}
-                                    {place.phone && (
-                                      <p className="text-xs text-muted-foreground mt-1">
-                                        📞 {place.phone}
-                                      </p>
-                                    )}
-                                  </div>
-                                  <div className="flex flex-col gap-1">
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={async (e) => {
-                                        e.stopPropagation();
-                                        await handleShowPlaceDetail(place.id);
-                                      }}
-                                      className="h-8 px-3 text-xs flex-shrink-0"
-                                    >
-                                      상세
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        savePlaceMutation.mutate(place);
-                                      }}
-                                      disabled={savePlaceMutation.isPending}
-                                      className="h-8 px-3 text-xs flex-shrink-0"
-                                    >
-                                      {savePlaceMutation.isPending ? (
-                                        <Loader2 className="h-3 w-3 animate-spin" />
-                                      ) : (
-                                        <>
-                                          <Plus className="h-3 w-3 mr-1" />
-                                          저장
-                                        </>
+                                      {place.category_name && (
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                          {place.category_name}
+                                        </p>
                                       )}
-                                    </Button>
+                                      {place.phone && (
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                          📞 {place.phone}
+                                        </p>
+                                      )}
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={async (e) => {
+                                          e.stopPropagation();
+                                          await handleShowPlaceDetail(place.id);
+                                        }}
+                                        className="h-8 px-3 text-xs flex-shrink-0"
+                                      >
+                                        상세
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          savePlaceMutation.mutate(place);
+                                        }}
+                                        disabled={savePlaceMutation.isPending}
+                                        className="h-8 px-3 text-xs flex-shrink-0"
+                                      >
+                                        {savePlaceMutation.isPending ? (
+                                          <Loader2 className="h-3 w-3 animate-spin" />
+                                        ) : (
+                                          <>
+                                            <Plus className="h-3 w-3 mr-1" />
+                                            저장
+                                          </>
+                                        )}
+                                      </Button>
+                                    </div>
                                   </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          );
-                        })}
-                      </div>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </div>
