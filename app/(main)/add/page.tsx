@@ -18,6 +18,7 @@ export default function AddPlacePage() {
   const [searchResults, setSearchResults] = useState<KakaoPlace[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<KakaoPlace | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const router = useRouter();
   const supabase = createClient();
   const queryClient = useQueryClient();
@@ -28,12 +29,17 @@ export default function AddPlacePage() {
 
     setIsSearching(true);
     try {
+      setSearchError(null);
       const results = await searchPlaces(searchQuery);
       setSearchResults(results);
+      if (results.length === 0) {
+        setSearchError("검색 결과가 없습니다.");
+      }
     } catch (error: any) {
       console.error("검색 실패:", error);
       const errorMessage = error.message || "장소 검색에 실패했습니다.";
-      alert(`검색 실패: ${errorMessage}\n\n카카오 검색 API 키 설정을 확인해주세요.`);
+      setSearchError(errorMessage);
+      setSearchResults([]);
     } finally {
       setIsSearching(false);
     }
@@ -218,48 +224,54 @@ export default function AddPlacePage() {
               </div>
             </form>
 
-            {searchResults.length > 0 && (
-              <div className="mt-6 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-lg">
-                    검색 결과 ({searchResults.length}개)
-                  </h3>
-                </div>
-                <div className="max-h-96 overflow-y-auto space-y-2 pr-2">
-                  {searchResults.map((place, index) => (
-                    <Card
-                      key={index}
-                      className="cursor-pointer hover:bg-accent hover:shadow-md transition-all duration-200 border-l-4 border-l-primary"
-                      onClick={() => handleSelectPlace(place)}
-                    >
-                      <CardContent className="p-4">
-                        <h4 className="font-semibold text-base mb-1">
-                          {place.place_name}
-                        </h4>
-                        <p className="text-sm text-muted-foreground line-clamp-1">
-                          {place.road_address_name || place.address_name}
-                        </p>
-                        {place.category_name && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {place.category_name}
-                          </p>
-                        )}
-                        {place.phone && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            📞 {place.phone}
-                          </p>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {!isSearching && searchQuery && searchResults.length === 0 && (
-              <div className="mt-6 text-center py-8 text-muted-foreground">
-                <p>검색 결과가 없습니다.</p>
-                <p className="text-sm mt-1">다른 키워드로 검색해보세요.</p>
+            {!isSearching && searchQuery && (
+              <div className="mt-6">
+                {searchResults.length > 0 ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold text-lg">
+                        검색 결과 ({searchResults.length}개)
+                      </h3>
+                    </div>
+                    <div className="max-h-96 overflow-y-auto space-y-2 pr-2">
+                      {searchResults.map((place, index) => (
+                        <Card
+                          key={index}
+                          className="cursor-pointer hover:bg-accent hover:shadow-md transition-all duration-200 border-l-4 border-l-primary"
+                          onClick={() => handleSelectPlace(place)}
+                        >
+                          <CardContent className="p-4">
+                            <h4 className="font-semibold text-base mb-1">
+                              {place.place_name}
+                            </h4>
+                            <p className="text-sm text-muted-foreground line-clamp-1">
+                              {place.road_address_name || place.address_name}
+                            </p>
+                            {place.category_name && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {place.category_name}
+                              </p>
+                            )}
+                            {place.phone && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                📞 {place.phone}
+                              </p>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-muted-foreground/70">
+                      {searchError || "검색 결과가 없습니다."}
+                    </p>
+                    <p className="text-xs text-muted-foreground/50 mt-1">
+                      다른 키워드로 검색해보세요.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>

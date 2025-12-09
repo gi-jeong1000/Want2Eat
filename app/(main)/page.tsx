@@ -25,6 +25,7 @@ export default function HomePage() {
   const [searchResults, setSearchResults] = useState<KakaoPlace[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [selectedPlaceDetail, setSelectedPlaceDetail] = useState<any>(null);
   const supabase = createClient();
   const router = useRouter();
@@ -358,15 +359,19 @@ export default function HomePage() {
 
     setIsSearching(true);
     try {
+      setSearchError(null);
       const results = await searchPlaces(searchQuery);
       setSearchResults(results);
       setShowSearchResults(true);
+      if (results.length === 0) {
+        setSearchError("검색 결과가 없습니다.");
+      }
     } catch (error: any) {
       console.error("검색 실패:", error);
       const errorMessage = error.message || "장소 검색에 실패했습니다.";
-      alert(
-        `검색 실패: ${errorMessage}\n\n카카오 검색 API 키 설정을 확인해주세요.`
-      );
+      setSearchError(errorMessage);
+      setSearchResults([]);
+      setShowSearchResults(true);
     } finally {
       setIsSearching(false);
     }
@@ -636,26 +641,42 @@ export default function HomePage() {
               )}
 
               {/* 검색 결과 리스트 */}
-              {showSearchResults && searchResults.length > 0 && (
+              {showSearchResults && (
                 <div className="absolute top-24 left-4 right-4 z-[100] max-w-md max-h-[60vh] overflow-y-auto">
                   <Card className="shadow-lg">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="font-semibold text-lg">
-                          검색 결과 ({searchResults.length}개)
+                          {searchResults.length > 0
+                            ? `검색 결과 (${searchResults.length}개)`
+                            : "검색 결과"}
                         </h3>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => {
                             setShowSearchResults(false);
+                            setSearchError(null);
                           }}
                           className="h-8 w-8 p-0"
                         >
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
-                      <div className="space-y-2">
+                      {/* 검색 결과가 없거나 에러가 있을 때 */}
+                      {(searchError || searchResults.length === 0) && (
+                        <div className="py-8 text-center">
+                          <p className="text-sm text-muted-foreground/70">
+                            {searchError || "검색 결과가 없습니다."}
+                          </p>
+                          <p className="text-xs text-muted-foreground/50 mt-1">
+                            다른 키워드로 검색해보세요.
+                          </p>
+                        </div>
+                      )}
+                      {/* 검색 결과 리스트 */}
+                      {searchResults.length > 0 && (
+                        <div className="space-y-2">
                         {searchResults.map((place) => {
                           return (
                             <Card
