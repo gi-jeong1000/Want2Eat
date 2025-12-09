@@ -88,42 +88,62 @@ export default function AddPlacePage() {
       // 타입 단언
       const placeData = place as { id: string } | null;
 
-      // 이미지 업로드
+      // 이미지 업로드 (실패해도 장소는 저장됨)
       if (data.images.length > 0 && placeData) {
-        const uploadPromises = data.images.map(async (file) => {
-          const fileExt = file.name.split(".").pop();
-          const fileName = `${placeData.id}/${Date.now()}.${fileExt}`;
+        try {
+          const uploadPromises = data.images.map(async (file) => {
+            const fileExt = file.name.split(".").pop();
+            const fileName = `${placeData.id}/${Date.now()}.${fileExt}`;
 
-          const { error: uploadError } = await supabase.storage
-            .from("place-images")
-            .upload(fileName, file);
+            const { error: uploadError } = await supabase.storage
+              .from("place-images")
+              .upload(fileName, file);
 
-          if (uploadError) throw uploadError;
+            if (uploadError) {
+              console.error("이미지 업로드 오류:", uploadError);
+              return null;
+            }
 
-          const {
-            data: { publicUrl },
-          } = supabase.storage.from("place-images").getPublicUrl(fileName);
+            const {
+              data: { publicUrl },
+            } = supabase.storage.from("place-images").getPublicUrl(fileName);
 
-          return {
-            place_id: placeData.id,
-            image_url: publicUrl,
-          };
-        });
+            return {
+              place_id: placeData.id,
+              image_url: publicUrl,
+            };
+          });
 
-        const imageData = await Promise.all(uploadPromises);
+          const imageData = await Promise.all(uploadPromises);
+          const validImageData = imageData.filter((img) => img !== null);
 
-        const { error: imagesError } = await supabase
-          .from("place_images")
-          .insert(imageData as any);
+          if (validImageData.length > 0) {
+            const { error: imagesError } = await supabase
+              .from("place_images")
+              .insert(validImageData as any);
 
-        if (imagesError) throw imagesError;
+            if (imagesError) {
+              console.error("이미지 메타데이터 저장 오류:", imagesError);
+            }
+          }
+        } catch (error) {
+          console.error("이미지 업로드 중 오류 발생:", error);
+          // 이미지 업로드 실패해도 장소는 저장되므로 계속 진행
+        }
       }
 
       return place;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["places"] });
-      router.push("/places");
+      // 라우팅을 약간 지연시켜 상태 업데이트가 완료되도록 함
+      setTimeout(() => {
+        router.push("/places");
+      }, 100);
+    },
+    onError: (error: any) => {
+      console.error("장소 저장 오류:", error);
+      alert(error.message || "장소 저장에 실패했습니다.");
     },
   });
 

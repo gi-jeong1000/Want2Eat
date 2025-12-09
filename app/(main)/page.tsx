@@ -33,28 +33,19 @@ export default function HomePage() {
   const { data: places, isLoading } = useQuery({
     queryKey: ["places"],
     queryFn: async () => {
-      // 환경 변수가 없으면 빈 배열 반환 (UI 확인용)
-      if (
-        !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-        process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder")
-      ) {
+      // 서버 사이드 API를 통해 조회 (RLS 정책 우회)
+      const response = await fetch("/api/places", {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("장소 조회 오류:", errorData.error || "알 수 없는 오류");
         return [];
       }
 
-      // 파일 기반 인증에서 user_id 가져오기
-      const userId = getSupabaseUserId();
-      if (!userId) return [];
-
-      // 자신의 장소 + 공유받은 장소 조회
-      const { data, error } = await supabase
-        .from("places")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("Supabase 연결 오류:", error);
-        return [];
-      }
+      const data = await response.json();
       return data as Place[];
     },
   });
