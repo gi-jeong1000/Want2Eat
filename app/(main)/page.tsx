@@ -354,7 +354,12 @@ export default function HomePage() {
       }
 
       const userId = getSupabaseUserId();
-      if (!userId) throw new Error("로그인이 필요합니다.");
+      if (!userId) {
+        throw new Error(
+          "로그인이 필요하거나 Supabase user_id가 올바르게 설정되지 않았습니다. " +
+            "환경 변수에 실제 Supabase UUID를 설정해주세요."
+        );
+      }
 
       const { data, error } = await supabase
         .from("places")

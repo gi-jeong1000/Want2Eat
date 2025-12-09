@@ -61,7 +61,12 @@ export default function AddPlacePage() {
 
       // 파일 기반 인증에서 user_id 가져오기
       const userId = getSupabaseUserId();
-      if (!userId) throw new Error("로그인이 필요합니다.");
+      if (!userId) {
+        throw new Error(
+          "로그인이 필요하거나 Supabase user_id가 올바르게 설정되지 않았습니다. " +
+          "환경 변수에 실제 Supabase UUID를 설정해주세요."
+        );
+      }
 
       // 장소 생성
       const { data: place, error: placeError } = await supabase

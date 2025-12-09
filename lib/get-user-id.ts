@@ -3,6 +3,13 @@
 
 import { User } from "@/lib/auth";
 
+// UUID 형식 검증 (예: 550e8400-e29b-41d4-a716-446655440000)
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isValidUUID(uuid: string): boolean {
+  return UUID_REGEX.test(uuid);
+}
+
 export function getSupabaseUserId(): string | null {
   if (typeof window === "undefined") return null;
 
@@ -11,7 +18,19 @@ export function getSupabaseUserId(): string | null {
 
   try {
     const user = JSON.parse(userStr) as User;
-    return user.supabaseUserId || user.id;
+    const userId = user.supabaseUserId || user.id;
+    
+    // UUID 형식 검증
+    if (userId && !isValidUUID(userId)) {
+      console.error(
+        "Supabase user_id가 올바른 UUID 형식이 아닙니다.",
+        "환경 변수에 실제 Supabase UUID를 설정해주세요.",
+        "현재 값:", userId
+      );
+      return null;
+    }
+    
+    return userId;
   } catch {
     return null;
   }
@@ -34,7 +53,19 @@ export function getSupabaseUserIdFromCookie(
     if (!userStr) return null;
 
     const user = JSON.parse(userStr) as User;
-    return user.supabaseUserId || user.id;
+    const userId = user.supabaseUserId || user.id;
+    
+    // UUID 형식 검증
+    if (userId && !isValidUUID(userId)) {
+      console.error(
+        "Supabase user_id가 올바른 UUID 형식이 아닙니다.",
+        "환경 변수에 실제 Supabase UUID를 설정해주세요.",
+        "현재 값:", userId
+      );
+      return null;
+    }
+    
+    return userId;
   } catch {
     return null;
   }
