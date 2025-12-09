@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { authenticate } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,45 +26,34 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      const user = authenticate(username, password);
+      // 서버 사이드 API로 로그인 처리
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, password }),
+        credentials: "include", // 쿠키 포함
+      });
 
-      if (!user) {
-        setError("아이디 또는 비밀번호가 올바르지 않습니다.");
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "로그인에 실패했습니다.");
         setLoading(false);
         return;
       }
 
       // 세션 저장 (localStorage)
-      localStorage.setItem("user", JSON.stringify(user));
-      localStorage.setItem("isAuthenticated", "true");
-
-      // 쿠키 설정을 위한 API 호출
-      try {
-        const response = await fetch("/api/auth/set-cookie", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ user }),
-          credentials: "include", // 쿠키 포함
-        });
-
-        if (!response.ok) {
-          console.error("쿠키 설정 실패:", await response.text());
-        } else {
-          console.log("쿠키 설정 성공");
-        }
-      } catch (err) {
-        console.error("쿠키 설정 중 오류 발생:", err);
+      if (data.user) {
+        localStorage.setItem("user", JSON.stringify(data.user));
+        localStorage.setItem("isAuthenticated", "true");
       }
 
-      // 약간의 지연 후 페이지 이동 (쿠키 설정 완료 대기)
-      setTimeout(() => {
-        window.location.href = "/";
-      }, 100);
+      // 페이지 이동
+      window.location.href = "/";
     } catch (err: any) {
       setError(err.message || "로그인에 실패했습니다.");
-    } finally {
       setLoading(false);
     }
   };
