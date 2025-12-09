@@ -22,6 +22,7 @@ import {
   Calendar,
   Plus,
   Share2,
+  User,
 } from "lucide-react";
 import Image from "next/image";
 import { useState, useEffect } from "react";
@@ -30,6 +31,7 @@ import { ko } from "date-fns/locale/ko";
 import { PlaceStatus, PlacePostWithImages } from "@/types";
 import { PlacePostCard } from "@/components/places/PlacePostCard";
 import { PlacePostForm } from "@/components/places/PlacePostForm";
+import { getUserNameBySupabaseId } from "@/lib/get-user-name";
 
 export default function PlaceDetailPage() {
   const params = useParams();
@@ -417,6 +419,12 @@ export default function PlaceDetailPage() {
                   </span>
                 </div>
               )}
+              <div className="flex items-center gap-1.5 text-sm pt-2 border-t">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">
+                  저장한 사람: {getUserNameBySupabaseId(place.user_id) || "알 수 없음"}
+                </span>
+              </div>
             </CardContent>
           </Card>
         </div>

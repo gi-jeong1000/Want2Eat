@@ -40,11 +40,10 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // 자신의 장소 조회
+    // 모든 장소 조회 (모든 사용자가 모든 장소를 볼 수 있음)
     const { data: placesData, error: placesError } = await supabase
       .from("places")
       .select("*")
-      .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
     if (placesError) {

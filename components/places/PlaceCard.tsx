@@ -10,9 +10,11 @@ import {
   Circle,
   Heart,
   Calendar,
+  User,
 } from "lucide-react";
 import Image from "next/image";
 import { PlaceStatus } from "@/types";
+import { getUserNameBySupabaseId } from "@/lib/get-user-name";
 
 interface PlaceCardProps {
   place: PlaceWithImages;
@@ -45,6 +47,7 @@ const statusConfig: Record<
 export function PlaceCard({ place }: PlaceCardProps) {
   const statusInfo = statusConfig[place.status];
   const StatusIcon = statusInfo.icon;
+  const ownerName = getUserNameBySupabaseId(place.user_id);
 
   return (
     <Link href={`/places/${place.id}`}>
@@ -108,6 +111,10 @@ export function PlaceCard({ place }: PlaceCardProps) {
               <span>📝 포스팅 {place.posts.length}개</span>
             </div>
           )}
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground pt-2 border-t">
+            <User className="h-3 w-3" />
+            <span>저장한 사람: {ownerName || "알 수 없음"}</span>
+          </div>
         </CardContent>
       </Card>
     </Link>

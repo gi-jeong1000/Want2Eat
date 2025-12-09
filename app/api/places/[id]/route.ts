@@ -45,12 +45,11 @@ export async function GET(
       },
     });
 
-    // 장소 조회 (자신의 장소만)
+    // 장소 조회 (모든 장소 조회 가능)
     const { data: place, error: placeError } = await supabase
       .from("places")
       .select("*")
       .eq("id", placeId)
-      .eq("user_id", userId)
       .single();
 
     if (placeError) {
