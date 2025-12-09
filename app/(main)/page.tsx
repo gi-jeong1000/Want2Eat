@@ -20,6 +20,7 @@ export default function HomePage() {
   const [markers, setMarkers] = useState<any[]>([]);
   const [searchMarkers, setSearchMarkers] = useState<any[]>([]);
   const [mapError, setMapError] = useState<string | null>(null);
+  const [isMapLoading, setIsMapLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<KakaoPlace[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -62,6 +63,7 @@ export default function HomePage() {
     if (!mapRef.current) return;
 
     const initMap = async () => {
+      setIsMapLoading(true);
       try {
         // 카카오 맵 API 키가 없으면 지도 대신 플레이스홀더 표시
         if (
@@ -72,6 +74,7 @@ export default function HomePage() {
             "카카오 맵 API 키가 설정되지 않았습니다. 지도는 표시되지 않습니다."
           );
           setMapError("카카오 맵 API 키가 설정되지 않았습니다.");
+          setIsMapLoading(false);
           return;
         }
 
@@ -82,11 +85,16 @@ export default function HomePage() {
             "카카오 맵 API를 로드할 수 없습니다. API 키 설정을 확인하세요.";
           console.error(errorMsg);
           setMapError(errorMsg);
+          setIsMapLoading(false);
           return;
         }
 
         try {
           const container = mapRef.current;
+          if (!container) {
+            throw new Error("지도 컨테이너를 찾을 수 없습니다.");
+          }
+
           const options = {
             center: new window.kakao.maps.LatLng(37.5665, 126.978),
             level: 3,
@@ -98,6 +106,7 @@ export default function HomePage() {
           if (mapInstance) {
             setMap(mapInstance);
             setMapError(null);
+            setIsMapLoading(false);
           } else {
             throw new Error("지도 인스턴스 생성 실패");
           }
@@ -110,6 +119,7 @@ export default function HomePage() {
         const errorMsg = error.message || "지도 초기화 실패";
         console.error("지도 초기화 실패:", errorMsg);
         setMapError(errorMsg);
+        setIsMapLoading(false);
       }
     };
 
@@ -471,6 +481,14 @@ export default function HomePage() {
             </div>
           ) : (
             <>
+              {isMapLoading && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                    <p className="text-muted-foreground">지도 로딩 중...</p>
+                  </div>
+                </div>
+              )}
               <div ref={mapRef} className="w-full h-full" />
 
               {/* 검색 바 */}
