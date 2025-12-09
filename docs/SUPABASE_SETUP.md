@@ -26,7 +26,17 @@
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+# 서비스 역할 키 (서버 사이드에서만 사용, RLS 우회용)
+# ⚠️ 보안: 이 키는 절대 클라이언트에 노출되면 안 됩니다!
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
+
+**서비스 역할 키 확인 방법:**
+
+1. Settings > API 메뉴
+2. **service_role** 키 복사 (⚠️ **secret**이라고 표시됨)
+3. 이 키는 서버 사이드에서만 사용하며, 클라이언트에 노출하면 안 됩니다!
 
 ## 3. 데이터베이스 스키마 생성
 

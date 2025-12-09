@@ -59,24 +59,14 @@ export default function AddPlacePage() {
         throw new Error("Supabase가 설정되지 않았습니다.");
       }
 
-      // 파일 기반 인증에서 user_id 가져오기
-      const userId = getSupabaseUserId();
-      if (!userId) {
-        throw new Error(
-          "장소 저장을 위해 Supabase User ID가 필요합니다.\n\n" +
-          "해결 방법:\n" +
-          "1. Supabase 대시보드 > Authentication > Users에서 UUID 확인\n" +
-          "2. Vercel 환경 변수에 USER1_SUPABASE_ID 설정\n" +
-          "3. 재배포 후 다시 시도\n\n" +
-          "자세한 가이드: docs/SUPABASE_USER_ID_SETUP.md"
-        );
-      }
-
-      // 장소 생성
-      const { data: place, error: placeError } = await supabase
-        .from("places")
-        .insert({
-          user_id: userId,
+      // 서버 사이드 API를 통해 장소 생성 (RLS 정책 우회)
+      const response = await fetch("/api/places/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
           name: data.name,
           address: data.address,
           latitude: data.latitude,
@@ -85,11 +75,15 @@ export default function AddPlacePage() {
           rating: data.rating,
           comment: data.comment,
           status: data.status,
-        } as any)
-        .select()
-        .single();
+        }),
+      });
 
-      if (placeError) throw placeError;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "장소 저장에 실패했습니다.");
+      }
+
+      const place = await response.json();
 
       // 타입 단언
       const placeData = place as { id: string } | null;

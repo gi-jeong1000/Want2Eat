@@ -395,29 +395,14 @@ export default function HomePage() {
   // 장소 저장 mutation
   const savePlaceMutation = useMutation({
     mutationFn: async (place: KakaoPlace) => {
-      if (
-        !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-        process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder")
-      ) {
-        throw new Error("Supabase가 설정되지 않았습니다.");
-      }
-
-      const userId = getSupabaseUserId();
-      if (!userId) {
-        throw new Error(
-          "장소 저장을 위해 Supabase User ID가 필요합니다.\n\n" +
-            "해결 방법:\n" +
-            "1. Supabase 대시보드 > Authentication > Users에서 UUID 확인\n" +
-            "2. Vercel 환경 변수에 USER1_SUPABASE_ID 설정\n" +
-            "3. 재배포 후 다시 시도\n\n" +
-            "자세한 가이드: docs/SUPABASE_USER_ID_SETUP.md"
-        );
-      }
-
-      const { data, error } = await supabase
-        .from("places")
-        .insert({
-          user_id: userId,
+      // 서버 사이드 API를 통해 저장 (RLS 정책 우회)
+      const response = await fetch("/api/places/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
           name: place.place_name,
           address: place.road_address_name || place.address_name,
           latitude: parseFloat(place.y),
@@ -426,11 +411,15 @@ export default function HomePage() {
           rating: null,
           comment: null,
           status: "want_to_go",
-        } as any)
-        .select()
-        .single();
+        }),
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "장소 저장에 실패했습니다.");
+      }
+
+      const data = await response.json();
       return data;
     },
     onSuccess: () => {
