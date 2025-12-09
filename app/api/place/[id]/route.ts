@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(request: NextRequest) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const body = await request.json();
-    const query = body.query;
+    const { id: placeId } = await params;
 
-    if (!query) {
+    if (!placeId) {
       return NextResponse.json(
-        { error: "검색어가 필요합니다." },
+        { error: "장소 ID가 필요합니다." },
         { status: 400 }
       );
     }
@@ -21,8 +23,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 카카오 로컬 API - 키워드로 장소 검색
-    const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=15&category_group_code=FD6`;
+    // 카카오 로컬 API - 장소 상세 정보 조회
+    const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(placeId)}&size=1`;
 
     const response = await fetch(url, {
       headers: {
@@ -32,15 +34,13 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("카카오 검색 API 오류:", response.status, errorText);
+      console.error("카카오 장소 상세 API 오류:", response.status, errorText);
       
-      // 에러 응답 파싱 시도
-      let errorMessage = "카카오 검색 API 호출에 실패했습니다.";
+      let errorMessage = "카카오 장소 상세 정보 조회에 실패했습니다.";
       try {
         const errorData = JSON.parse(errorText);
         errorMessage = errorData.message || errorMessage;
       } catch {
-        // JSON 파싱 실패 시 원본 텍스트 사용
         errorMessage = errorText || errorMessage;
       }
 
@@ -55,9 +55,18 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
-    return NextResponse.json(data);
+    
+    // 첫 번째 결과 반환
+    if (data.documents && data.documents.length > 0) {
+      return NextResponse.json(data.documents[0]);
+    }
+
+    return NextResponse.json(
+      { error: "장소를 찾을 수 없습니다." },
+      { status: 404 }
+    );
   } catch (error: any) {
-    console.error("검색 API 서버 오류:", error);
+    console.error("장소 상세 API 서버 오류:", error);
     return NextResponse.json(
       { 
         error: error.message || "서버 오류가 발생했습니다.",
@@ -67,3 +76,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

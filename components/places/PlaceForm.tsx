@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { NaverPlace } from "@/types";
+import { KakaoPlace } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,7 +11,7 @@ import Image from "next/image";
 import { PlaceStatus } from "@/types";
 
 interface PlaceFormProps {
-  place: NaverPlace;
+  place: KakaoPlace;
   onSubmit: (data: {
     comment: string;
     images: File[];
@@ -70,14 +70,19 @@ export function PlaceForm({
         </CardHeader>
         <CardContent>
           <h3 className="font-semibold text-lg mb-2">
-            {place.title.replace(/<[^>]*>/g, "")}
+            {place.place_name}
           </h3>
           <p className="text-sm text-muted-foreground">
-            {place.roadAddress || place.address}
+            {place.road_address_name || place.address_name}
           </p>
-          {place.category && (
+          {place.category_name && (
             <p className="text-xs text-muted-foreground mt-2 px-2 py-1 bg-muted rounded-md inline-block">
-              {place.category.split(">").pop()?.trim()}
+              {place.category_name}
+            </p>
+          )}
+          {place.phone && (
+            <p className="text-xs text-muted-foreground mt-2">
+              📞 {place.phone}
             </p>
           )}
         </CardContent>

@@ -77,3 +77,50 @@ export interface NaverSearchResponse {
   display: number;
 }
 
+// 카카오 맵 API 타입
+export interface KakaoPlace {
+  id: string;
+  place_name: string;
+  category_name: string;
+  category_group_code: string;
+  category_group_name: string;
+  phone: string;
+  address_name: string;
+  road_address_name: string;
+  x: string; // 경도
+  y: string; // 위도
+  place_url: string;
+  distance?: string;
+}
+
+export interface KakaoSearchResponse {
+  documents: KakaoPlace[];
+  meta: {
+    total_count: number;
+    pageable_count: number;
+    is_end: boolean;
+  };
+}
+
+export interface KakaoPlaceDetail {
+  id: string;
+  place_name: string;
+  category_name: string;
+  category_group_code: string;
+  category_group_name: string;
+  phone: string;
+  address_name: string;
+  road_address_name: string;
+  x: string;
+  y: string;
+  place_url: string;
+  // 음식점 정보
+  menu_info?: string;
+  // 운영 시간
+  open_hour?: string;
+  // 기타 정보
+  homepage?: string;
+  // 별점 (카카오맵에서 제공하는 경우)
+  rating?: number;
+}
+

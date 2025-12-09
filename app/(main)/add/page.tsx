@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { getSupabaseUserId } from "@/lib/get-user-id";
-import { searchPlaces, convertMapCoordinates } from "@/lib/naver/search";
-import { NaverPlace } from "@/types";
+import { searchPlaces } from "@/lib/kakao/search";
+import { KakaoPlace } from "@/types";
 import { PlaceForm } from "@/components/places/PlaceForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,8 +15,8 @@ import { Search, Loader2 } from "lucide-react";
 
 export default function AddPlacePage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<NaverPlace[]>([]);
-  const [selectedPlace, setSelectedPlace] = useState<NaverPlace | null>(null);
+  const [searchResults, setSearchResults] = useState<KakaoPlace[]>([]);
+  const [selectedPlace, setSelectedPlace] = useState<KakaoPlace | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const router = useRouter();
   const supabase = createClient();
@@ -26,17 +26,6 @@ export default function AddPlacePage() {
     e.preventDefault();
     if (!searchQuery.trim()) return;
 
-    // 네이버 검색 API 키가 없으면 에러 메시지 표시
-    if (
-      !process.env.NEXT_PUBLIC_NAVER_SEARCH_CLIENT_ID ||
-      process.env.NEXT_PUBLIC_NAVER_SEARCH_CLIENT_ID.includes("your_")
-    ) {
-      alert(
-        "네이버 검색 API 키가 설정되지 않았습니다. UI만 확인할 수 있습니다."
-      );
-      return;
-    }
-
     setIsSearching(true);
     try {
       const results = await searchPlaces(searchQuery);
@@ -44,7 +33,7 @@ export default function AddPlacePage() {
     } catch (error: any) {
       console.error("검색 실패:", error);
       const errorMessage = error.message || "장소 검색에 실패했습니다.";
-      alert(`검색 실패: ${errorMessage}\n\n네이버 검색 API 키와 서비스 URL 설정을 확인해주세요.`);
+      alert(`검색 실패: ${errorMessage}\n\n카카오 검색 API 키 설정을 확인해주세요.`);
     } finally {
       setIsSearching(false);
     }
@@ -135,7 +124,7 @@ export default function AddPlacePage() {
     },
   });
 
-  const handleSelectPlace = (place: NaverPlace) => {
+  const handleSelectPlace = (place: KakaoPlace) => {
     setSelectedPlace(place);
     setSearchResults([]);
   };
@@ -147,21 +136,13 @@ export default function AddPlacePage() {
   }) => {
     if (!selectedPlace) return;
 
-    const { lat, lng } = convertMapCoordinates(
-      selectedPlace.mapx,
-      selectedPlace.mapy
-    );
-
-    // 네이버 별점 정보는 검색 API에서 제공하지 않으므로 null로 설정
-    // 실제로는 네이버 지도 API의 장소 상세 정보 API를 사용하여 별점을 가져올 수 있습니다.
-
     createPlaceMutation.mutate({
-      name: selectedPlace.title.replace(/<[^>]*>/g, ""), // HTML 태그 제거
-      address: selectedPlace.roadAddress || selectedPlace.address,
-      latitude: lat,
-      longitude: lng,
-      naver_place_id: selectedPlace.placeId || null,
-      rating: null, // 별점은 별도 API로 가져와야 함
+      name: selectedPlace.place_name,
+      address: selectedPlace.road_address_name || selectedPlace.address_name,
+      latitude: parseFloat(selectedPlace.y),
+      longitude: parseFloat(selectedPlace.x),
+      naver_place_id: selectedPlace.id,
+      rating: null,
       comment: formData.comment || null,
       images: formData.images,
       status: formData.status as
@@ -176,7 +157,7 @@ export default function AddPlacePage() {
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2">장소 추가</h1>
         <p className="text-muted-foreground">
-          네이버 검색으로 장소를 찾아 저장하세요
+          카카오 맵 검색으로 장소를 찾아 저장하세요
         </p>
       </div>
 
@@ -230,14 +211,19 @@ export default function AddPlacePage() {
                     >
                       <CardContent className="p-4">
                         <h4 className="font-semibold text-base mb-1">
-                          {place.title.replace(/<[^>]*>/g, "")}
+                          {place.place_name}
                         </h4>
                         <p className="text-sm text-muted-foreground line-clamp-1">
-                          {place.roadAddress || place.address}
+                          {place.road_address_name || place.address_name}
                         </p>
-                        {place.category && (
+                        {place.category_name && (
                           <p className="text-xs text-muted-foreground mt-1">
-                            {place.category.split(">").pop()?.trim()}
+                            {place.category_name}
+                          </p>
+                        )}
+                        {place.phone && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            📞 {place.phone}
                           </p>
                         )}
                       </CardContent>

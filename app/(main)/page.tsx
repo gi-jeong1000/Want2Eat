@@ -4,9 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { getSupabaseUserId } from "@/lib/get-user-id";
-import { loadNaverMapScript } from "@/lib/naver/map";
-import { searchPlaces, convertMapCoordinates } from "@/lib/naver/search";
-import { Place, NaverPlace } from "@/types";
+import { loadKakaoMapScript } from "@/lib/kakao/map";
+import { searchPlaces } from "@/lib/kakao/search";
+import { getPlaceDetail } from "@/lib/kakao/place";
+import { Place, KakaoPlace } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -20,9 +21,10 @@ export default function HomePage() {
   const [searchMarkers, setSearchMarkers] = useState<any[]>([]);
   const [mapError, setMapError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<NaverPlace[]>([]);
+  const [searchResults, setSearchResults] = useState<KakaoPlace[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [selectedPlaceDetail, setSelectedPlaceDetail] = useState<any>(null);
   const supabase = createClient();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -61,33 +63,36 @@ export default function HomePage() {
 
     const initMap = async () => {
       try {
-        // 네이버 지도 API 키가 없으면 지도 대신 플레이스홀더 표시
+        // 카카오 맵 API 키가 없으면 지도 대신 플레이스홀더 표시
         if (
-          !process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID ||
-          process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID.includes("your_")
+          !process.env.NEXT_PUBLIC_KAKAO_MAP_APP_KEY ||
+          process.env.NEXT_PUBLIC_KAKAO_MAP_APP_KEY.includes("your_")
         ) {
           console.log(
-            "네이버 지도 API 키가 설정되지 않았습니다. 지도는 표시되지 않습니다."
+            "카카오 맵 API 키가 설정되지 않았습니다. 지도는 표시되지 않습니다."
           );
-          setMapError("네이버 지도 API 키가 설정되지 않았습니다.");
+          setMapError("카카오 맵 API 키가 설정되지 않았습니다.");
           return;
         }
 
-        await loadNaverMapScript();
+        await loadKakaoMapScript();
 
-        if (!window.naver || !window.naver.maps) {
+        if (!window.kakao || !window.kakao.maps) {
           const errorMsg =
-            "네이버 지도 API를 로드할 수 없습니다. Client ID와 도메인 설정을 확인하세요.";
+            "카카오 맵 API를 로드할 수 없습니다. API 키 설정을 확인하세요.";
           console.error(errorMsg);
           setMapError(errorMsg);
           return;
         }
 
         try {
-          const mapInstance = new window.naver.maps.Map(mapRef.current, {
-            center: new window.naver.maps.LatLng(37.5665, 126.978),
-            zoom: 13,
-          });
+          const container = mapRef.current;
+          const options = {
+            center: new window.kakao.maps.LatLng(37.5665, 126.978),
+            level: 3,
+          };
+
+          const mapInstance = new window.kakao.maps.Map(container, options);
 
           // 지도 생성 성공 확인
           if (mapInstance) {
@@ -113,39 +118,38 @@ export default function HomePage() {
 
   // 저장된 장소 마커 표시
   useEffect(() => {
-    if (!map || !places || !window.naver) return;
+    if (!map || !places || !window.kakao) return;
 
     // 기존 저장된 장소 마커 제거
     markers.forEach((marker) => marker.setMap(null));
     const newMarkers: any[] = [];
 
     places.forEach((place) => {
-      const marker = new window.naver.maps.Marker({
-        position: new window.naver.maps.LatLng(place.latitude, place.longitude),
+      const markerPosition = new window.kakao.maps.LatLng(
+        place.latitude,
+        place.longitude
+      );
+
+      // 커스텀 마커 이미지 생성
+      const imageSrc =
+        "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png";
+      const imageSize = new window.kakao.maps.Size(30, 30);
+      const imageOption = { offset: new window.kakao.maps.Point(15, 30) };
+      const markerImage = new window.kakao.maps.MarkerImage(
+        imageSrc,
+        imageSize,
+        imageOption
+      );
+
+      const marker = new window.kakao.maps.Marker({
+        position: markerPosition,
+        image: markerImage,
         map: map,
         title: place.name,
-        icon: {
-          content: `
-            <div style="
-              background-color: #3b82f6;
-              width: 30px;
-              height: 30px;
-              border-radius: 50%;
-              border: 3px solid white;
-              box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              color: white;
-              font-weight: bold;
-              font-size: 14px;
-            ">📍</div>
-          `,
-          anchor: new window.naver.maps.Point(15, 15),
-        },
       });
 
-      const infoWindow = new window.naver.maps.InfoWindow({
+      // 인포윈도우 생성
+      const infowindow = new window.kakao.maps.InfoWindow({
         content: `
           <div style="padding: 10px; min-width: 150px;">
             <h3 style="margin: 0 0 5px 0; font-weight: bold;">${place.name}</h3>
@@ -174,8 +178,8 @@ export default function HomePage() {
         `,
       });
 
-      window.naver.maps.Event.addListener(marker, "click", () => {
-        infoWindow.open(map, marker);
+      window.kakao.maps.event.addListener(marker, "click", () => {
+        infowindow.open(map, marker);
       });
 
       newMarkers.push(marker);
@@ -185,95 +189,109 @@ export default function HomePage() {
 
     // 검색 결과가 없을 때만 저장된 장소 범위로 조정
     if (places.length > 0 && searchResults.length === 0) {
-      const bounds = new window.naver.maps.LatLngBounds();
+      const bounds = new window.kakao.maps.LatLngBounds();
       places.forEach((place) => {
         bounds.extend(
-          new window.naver.maps.LatLng(place.latitude, place.longitude)
+          new window.kakao.maps.LatLng(place.latitude, place.longitude)
         );
       });
-      map.fitBounds(bounds);
+      map.setBounds(bounds);
     }
-  }, [map, places]);
+  }, [map, places, searchResults]);
 
   // 검색 결과 마커 표시
   useEffect(() => {
-    if (!map || !searchResults.length || !window.naver) return;
+    if (!map || !searchResults.length || !window.kakao) return;
 
     // 기존 검색 마커 제거
     searchMarkers.forEach((marker) => marker.setMap(null));
     const newSearchMarkers: any[] = [];
 
     searchResults.forEach((place) => {
-      const { lat, lng } = convertMapCoordinates(place.mapx, place.mapy);
-      const marker = new window.naver.maps.Marker({
-        position: new window.naver.maps.LatLng(lat, lng),
+      const markerPosition = new window.kakao.maps.LatLng(
+        parseFloat(place.y),
+        parseFloat(place.x)
+      );
+
+      // 검색 결과용 커스텀 마커
+      const imageSrc =
+        "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_orange.png";
+      const imageSize = new window.kakao.maps.Size(30, 30);
+      const imageOption = { offset: new window.kakao.maps.Point(15, 30) };
+      const markerImage = new window.kakao.maps.MarkerImage(
+        imageSrc,
+        imageSize,
+        imageOption
+      );
+
+      const marker = new window.kakao.maps.Marker({
+        position: markerPosition,
+        image: markerImage,
         map: map,
-        title: place.title.replace(/<[^>]*>/g, ""),
-        icon: {
-          content: `
-            <div style="
-              background-color: #ef4444;
-              width: 30px;
-              height: 30px;
-              border-radius: 50%;
-              border: 3px solid white;
-              box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              color: white;
-              font-weight: bold;
-              font-size: 14px;
-            ">🔍</div>
-          `,
-          anchor: new window.naver.maps.Point(15, 15),
-        },
+        title: place.place_name,
       });
 
-      const infoWindow = new window.naver.maps.InfoWindow({
+      // 인포윈도우 생성
+      const infowindow = new window.kakao.maps.InfoWindow({
         content: `
           <div style="padding: 10px; min-width: 200px;">
-            <h3 style="margin: 0 0 5px 0; font-weight: bold;">${place.title.replace(
-              /<[^>]*>/g,
-              ""
-            )}</h3>
+            <h3 style="margin: 0 0 5px 0; font-weight: bold;">${
+              place.place_name
+            }</h3>
             <p style="margin: 0; font-size: 12px; color: #666;">${
-              place.roadAddress || place.address
+              place.road_address_name || place.address_name
             }</p>
             ${
-              place.category
-                ? `<p style="margin: 5px 0 0 0; font-size: 11px; color: #999;">${place.category
-                    .split(">")
-                    .pop()
-                    ?.trim()}</p>`
+              place.category_name
+                ? `<p style="margin: 5px 0 0 0; font-size: 11px; color: #999;">${place.category_name}</p>`
+                : ""
+            }
+            ${
+              place.phone
+                ? `<p style="margin: 5px 0 0 0; font-size: 11px; color: #666;">📞 ${place.phone}</p>`
                 : ""
             }
             <button 
-              onclick="window.handleSavePlace && window.handleSavePlace('${place.title
-                .replace(/<[^>]*>/g, "")
-                .replace(/'/g, "\\'")}', '${(
-          place.roadAddress || place.address
-        ).replace(/'/g, "\\'")}', '${place.mapx}', '${place.mapy}', '${
-          place.placeId || ""
-        }')"
+              onclick="window.handleShowPlaceDetail && window.handleShowPlaceDetail('${
+                place.id
+              }')"
               style="
                 margin-top: 8px;
-                padding: 6px 12px;
+                padding: 4px 8px;
                 background-color: #10b981;
                 color: white;
                 border: none;
                 border-radius: 4px;
                 cursor: pointer;
                 font-size: 12px;
-                width: 100%;
+                margin-right: 4px;
+              "
+            >상세정보</button>
+            <button 
+              onclick="window.handleSavePlace && window.handleSavePlace('${place.place_name.replace(
+                /'/g,
+                "\\'"
+              )}', '${(place.road_address_name || place.address_name).replace(
+          /'/g,
+          "\\'"
+        )}', '${place.y}', '${place.x}', '${place.id}')"
+              style="
+                margin-top: 8px;
+                padding: 4px 8px;
+                background-color: #3b82f6;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 12px;
               "
             >저장하기</button>
           </div>
         `,
       });
 
-      window.naver.maps.Event.addListener(marker, "click", () => {
-        infoWindow.open(map, marker);
+      window.kakao.maps.event.addListener(marker, "click", () => {
+        infowindow.open(map, marker);
       });
 
       newSearchMarkers.push(marker);
@@ -283,12 +301,13 @@ export default function HomePage() {
 
     // 검색 결과 범위로 지도 조정
     if (searchResults.length > 0) {
-      const bounds = new window.naver.maps.LatLngBounds();
+      const bounds = new window.kakao.maps.LatLngBounds();
       searchResults.forEach((place) => {
-        const { lat, lng } = convertMapCoordinates(place.mapx, place.mapy);
-        bounds.extend(new window.naver.maps.LatLng(lat, lng));
+        bounds.extend(
+          new window.kakao.maps.LatLng(parseFloat(place.y), parseFloat(place.x))
+        );
       });
-      map.fitBounds(bounds);
+      map.setBounds(bounds);
     }
   }, [map, searchResults]);
 
@@ -296,14 +315,6 @@ export default function HomePage() {
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
-
-    if (
-      !process.env.NEXT_PUBLIC_NAVER_SEARCH_CLIENT_ID ||
-      process.env.NEXT_PUBLIC_NAVER_SEARCH_CLIENT_ID.includes("your_")
-    ) {
-      alert("네이버 검색 API 키가 설정되지 않았습니다.");
-      return;
-    }
 
     setIsSearching(true);
     try {
@@ -314,16 +325,27 @@ export default function HomePage() {
       console.error("검색 실패:", error);
       const errorMessage = error.message || "장소 검색에 실패했습니다.";
       alert(
-        `검색 실패: ${errorMessage}\n\n네이버 검색 API 키와 서비스 URL 설정을 확인해주세요.`
+        `검색 실패: ${errorMessage}\n\n카카오 검색 API 키 설정을 확인해주세요.`
       );
     } finally {
       setIsSearching(false);
     }
   };
 
+  // 장소 상세 정보 조회
+  const handleShowPlaceDetail = async (placeId: string) => {
+    try {
+      const detail = await getPlaceDetail(placeId);
+      setSelectedPlaceDetail(detail);
+    } catch (error: any) {
+      console.error("상세 정보 조회 실패:", error);
+      alert("상세 정보를 불러올 수 없습니다.");
+    }
+  };
+
   // 장소 저장 mutation
   const savePlaceMutation = useMutation({
-    mutationFn: async (place: NaverPlace) => {
+    mutationFn: async (place: KakaoPlace) => {
       if (
         !process.env.NEXT_PUBLIC_SUPABASE_URL ||
         process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder")
@@ -334,17 +356,15 @@ export default function HomePage() {
       const userId = getSupabaseUserId();
       if (!userId) throw new Error("로그인이 필요합니다.");
 
-      const { lat, lng } = convertMapCoordinates(place.mapx, place.mapy);
-
       const { data, error } = await supabase
         .from("places")
         .insert({
           user_id: userId,
-          name: place.title.replace(/<[^>]*>/g, ""),
-          address: place.roadAddress || place.address,
-          latitude: lat,
-          longitude: lng,
-          naver_place_id: place.placeId || null,
+          name: place.place_name,
+          address: place.road_address_name || place.address_name,
+          latitude: parseFloat(place.y),
+          longitude: parseFloat(place.x),
+          naver_place_id: place.id,
           rating: null,
           comment: null,
           status: "want_to_go",
@@ -375,27 +395,33 @@ export default function HomePage() {
     (window as any).handleSavePlace = (
       name: string,
       address: string,
-      mapx: string,
-      mapy: string,
+      lat: string,
+      lng: string,
       placeId: string
     ) => {
-      const place: NaverPlace = {
-        title: name,
-        address: address,
-        roadAddress: address,
-        mapx,
-        mapy,
-        placeId: placeId || undefined,
-        link: "",
-        category: "",
-        description: "",
-        telephone: "",
+      const place: KakaoPlace = {
+        id: placeId,
+        place_name: name,
+        address_name: address,
+        road_address_name: address,
+        x: lng,
+        y: lat,
+        category_name: "",
+        category_group_code: "",
+        category_group_name: "",
+        phone: "",
+        place_url: "",
       };
       savePlaceMutation.mutate(place);
     };
 
+    (window as any).handleShowPlaceDetail = (placeId: string) => {
+      handleShowPlaceDetail(placeId);
+    };
+
     return () => {
       delete (window as any).handleSavePlace;
+      delete (window as any).handleShowPlaceDetail;
     };
   }, [savePlaceMutation]);
 
@@ -411,8 +437,8 @@ export default function HomePage() {
   }
 
   const hasMapApi =
-    process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID &&
-    !process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID.includes("your_");
+    process.env.NEXT_PUBLIC_KAKAO_MAP_APP_KEY &&
+    !process.env.NEXT_PUBLIC_KAKAO_MAP_APP_KEY.includes("your_");
 
   return (
     <div className="relative md:h-[calc(100vh-64px)] h-[calc(100vh-128px)]">
@@ -429,12 +455,9 @@ export default function HomePage() {
                   <div className="text-sm text-left bg-red-50 p-4 rounded-md mt-4">
                     <p className="font-semibold mb-2">확인 사항:</p>
                     <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                      <li>네이버 클라우드 플랫폼에서 Application 등록 확인</li>
-                      <li>
-                        서비스 URL에 Vercel 도메인 추가
-                        (https://your-app.vercel.app)
-                      </li>
-                      <li>Client ID가 올바르게 입력되었는지 확인</li>
+                      <li>카카오 개발자 콘솔에서 애플리케이션 등록 확인</li>
+                      <li>플랫폼 설정에 도메인 추가</li>
+                      <li>JavaScript 키가 올바르게 입력되었는지 확인</li>
                       <li>환경 변수 설정 후 재배포 필요</li>
                     </ul>
                   </div>
@@ -480,6 +503,7 @@ export default function HomePage() {
                             setSearchQuery("");
                             setSearchResults([]);
                             setShowSearchResults(false);
+                            setSelectedPlaceDetail(null);
                             // 검색 마커 제거
                             searchMarkers.forEach((marker) =>
                               marker.setMap(null)
@@ -495,6 +519,75 @@ export default function HomePage() {
                   </CardContent>
                 </Card>
               </div>
+
+              {/* 장소 상세 정보 모달 */}
+              {selectedPlaceDetail && (
+                <div className="absolute top-24 left-4 right-4 z-[100] max-w-md">
+                  <Card className="shadow-lg">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-semibold text-lg">
+                          장소 상세 정보
+                        </h3>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSelectedPlaceDetail(null)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="space-y-2">
+                        <div>
+                          <h4 className="font-semibold text-base">
+                            {selectedPlaceDetail.place_name}
+                          </h4>
+                          <p className="text-sm text-muted-foreground">
+                            {selectedPlaceDetail.road_address_name ||
+                              selectedPlaceDetail.address_name}
+                          </p>
+                        </div>
+                        {selectedPlaceDetail.phone && (
+                          <p className="text-sm">
+                            <span className="font-medium">전화:</span>{" "}
+                            {selectedPlaceDetail.phone}
+                          </p>
+                        )}
+                        {selectedPlaceDetail.category_name && (
+                          <p className="text-sm">
+                            <span className="font-medium">카테고리:</span>{" "}
+                            {selectedPlaceDetail.category_name}
+                          </p>
+                        )}
+                        {selectedPlaceDetail.menu_info && (
+                          <div className="mt-3">
+                            <p className="font-medium text-sm mb-1">
+                              메뉴 정보:
+                            </p>
+                            <div
+                              className="text-sm text-muted-foreground whitespace-pre-line"
+                              dangerouslySetInnerHTML={{
+                                __html: selectedPlaceDetail.menu_info,
+                              }}
+                            />
+                          </div>
+                        )}
+                        {selectedPlaceDetail.homepage && (
+                          <a
+                            href={selectedPlaceDetail.homepage}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-primary hover:underline"
+                          >
+                            홈페이지 보기
+                          </a>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
 
               {/* 검색 결과 리스트 */}
               {showSearchResults && searchResults.length > 0 && (
@@ -517,22 +610,21 @@ export default function HomePage() {
                         </Button>
                       </div>
                       <div className="space-y-2">
-                        {searchResults.map((place, index) => {
-                          const { lat, lng } = convertMapCoordinates(
-                            place.mapx,
-                            place.mapy
-                          );
+                        {searchResults.map((place) => {
                           return (
                             <Card
-                              key={index}
+                              key={place.id}
                               className="cursor-pointer hover:bg-accent transition-colors"
                               onClick={() => {
                                 // 지도 중심 이동
-                                if (map && window.naver) {
-                                  map.setCenter(
-                                    new window.naver.maps.LatLng(lat, lng)
-                                  );
-                                  map.setZoom(16);
+                                if (map && window.kakao) {
+                                  const moveLatLon =
+                                    new window.kakao.maps.LatLng(
+                                      parseFloat(place.y),
+                                      parseFloat(place.x)
+                                    );
+                                  map.setCenter(moveLatLon);
+                                  map.setLevel(3);
                                 }
                               }}
                             >
@@ -540,38 +632,54 @@ export default function HomePage() {
                                 <div className="flex items-start justify-between gap-2">
                                   <div className="flex-1 min-w-0">
                                     <h4 className="font-semibold text-sm mb-1 truncate">
-                                      {place.title.replace(/<[^>]*>/g, "")}
+                                      {place.place_name}
                                     </h4>
                                     <p className="text-xs text-muted-foreground line-clamp-1">
-                                      {place.roadAddress || place.address}
+                                      {place.road_address_name ||
+                                        place.address_name}
                                     </p>
-                                    {place.category && (
+                                    {place.category_name && (
                                       <p className="text-xs text-muted-foreground mt-1">
-                                        {place.category
-                                          .split(">")
-                                          .pop()
-                                          ?.trim()}
+                                        {place.category_name}
+                                      </p>
+                                    )}
+                                    {place.phone && (
+                                      <p className="text-xs text-muted-foreground mt-1">
+                                        📞 {place.phone}
                                       </p>
                                     )}
                                   </div>
-                                  <Button
-                                    size="sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      savePlaceMutation.mutate(place);
-                                    }}
-                                    disabled={savePlaceMutation.isPending}
-                                    className="h-8 px-3 text-xs flex-shrink-0"
-                                  >
-                                    {savePlaceMutation.isPending ? (
-                                      <Loader2 className="h-3 w-3 animate-spin" />
-                                    ) : (
-                                      <>
-                                        <Plus className="h-3 w-3 mr-1" />
-                                        저장
-                                      </>
-                                    )}
-                                  </Button>
+                                  <div className="flex flex-col gap-1">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        await handleShowPlaceDetail(place.id);
+                                      }}
+                                      className="h-8 px-3 text-xs flex-shrink-0"
+                                    >
+                                      상세
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        savePlaceMutation.mutate(place);
+                                      }}
+                                      disabled={savePlaceMutation.isPending}
+                                      className="h-8 px-3 text-xs flex-shrink-0"
+                                    >
+                                      {savePlaceMutation.isPending ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                      ) : (
+                                        <>
+                                          <Plus className="h-3 w-3 mr-1" />
+                                          저장
+                                        </>
+                                      )}
+                                    </Button>
+                                  </div>
                                 </div>
                               </CardContent>
                             </Card>
@@ -604,7 +712,7 @@ export default function HomePage() {
             <CardContent className="p-8 text-center">
               <h2 className="text-2xl font-bold mb-4">지도 미리보기</h2>
               <p className="text-muted-foreground mb-4">
-                네이버 지도 API 키를 설정하면 지도가 표시됩니다.
+                카카오 맵 API 키를 설정하면 지도가 표시됩니다.
               </p>
               <p className="text-sm text-muted-foreground">
                 현재는 UI 구성만 확인할 수 있습니다.
