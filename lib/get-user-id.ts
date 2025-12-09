@@ -23,9 +23,14 @@ export function getSupabaseUserId(): string | null {
     // UUID 형식 검증
     if (userId && !isValidUUID(userId)) {
       console.error(
-        "Supabase user_id가 올바른 UUID 형식이 아닙니다.",
-        "환경 변수에 실제 Supabase UUID를 설정해주세요.",
-        "현재 값:", userId
+        "❌ Supabase user_id 설정 오류",
+        "\n현재 값:", userId,
+        "\n\n해결 방법:",
+        "\n1. Supabase 대시보드 > Authentication > Users에서 UUID 확인",
+        "\n2. Vercel 환경 변수에 USER1_SUPABASE_ID 설정 (또는 로컬 .env.local)",
+        "\n3. UUID 형식: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        "\n4. 재배포 또는 서버 재시작",
+        "\n\n자세한 가이드: docs/SUPABASE_USER_ID_SETUP.md"
       );
       return null;
     }
@@ -58,9 +63,14 @@ export function getSupabaseUserIdFromCookie(
     // UUID 형식 검증
     if (userId && !isValidUUID(userId)) {
       console.error(
-        "Supabase user_id가 올바른 UUID 형식이 아닙니다.",
-        "환경 변수에 실제 Supabase UUID를 설정해주세요.",
-        "현재 값:", userId
+        "❌ Supabase user_id 설정 오류",
+        "\n현재 값:", userId,
+        "\n\n해결 방법:",
+        "\n1. Supabase 대시보드 > Authentication > Users에서 UUID 확인",
+        "\n2. Vercel 환경 변수에 USER1_SUPABASE_ID 설정 (또는 로컬 .env.local)",
+        "\n3. UUID 형식: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        "\n4. 재배포 또는 서버 재시작",
+        "\n\n자세한 가이드: docs/SUPABASE_USER_ID_SETUP.md"
       );
       return null;
     }

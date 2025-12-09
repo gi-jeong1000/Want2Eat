@@ -22,6 +22,7 @@
    - **anon public key**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
 
 이 값들을 `.env.local` 파일에 설정하세요:
+
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
@@ -36,6 +37,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 5. 성공 메시지 확인
 
 ### 스키마 내용 요약:
+
 - `places` 테이블: 장소 정보 저장
 - `place_images` 테이블: 장소 사진 정보 저장
 - Row Level Security (RLS) 정책: 사용자별 데이터 접근 제어
@@ -61,20 +63,45 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 3. "New Policy" 클릭
 4. 정책 템플릿 선택 또는 직접 작성
 
-## 5. 사용자 계정 생성 (초기 2개 계정)
+## 5. 사용자 계정 생성 및 User ID 설정
 
-### 방법 1: Supabase 대시보드에서 생성
+### ⚠️ 중요: User ID 설정 필수
+
+장소 저장 기능을 사용하려면 각 사용자 계정에 Supabase User ID(UUID)를 환경 변수에 설정해야 합니다.
+
+**자세한 설정 방법은 [Supabase User ID 설정 가이드](./SUPABASE_USER_ID_SETUP.md)를 참고하세요.**
+
+### 빠른 설정 방법
+
+1. **Supabase에서 User ID 확인:**
+
+   - Authentication > Users 메뉴에서 UUID 복사
+   - 또는 SQL Editor에서 `SELECT id FROM auth.users;` 실행
+
+2. **Vercel 환경 변수 설정:**
+
+   ```
+   USER1_SUPABASE_ID=your_uuid_here
+   USER2_SUPABASE_ID=your_uuid_here
+   TEST_USER_SUPABASE_ID=your_uuid_here
+   ```
+
+3. **재배포 후 로그인**
+
+### 사용자 계정 생성
+
+#### 방법 1: Supabase 대시보드에서 생성
 
 1. 왼쪽 메뉴에서 **Authentication** 클릭
 2. **Users** 탭 선택
 3. "Add user" 또는 "Create user" 클릭
-4. 첫 번째 계정 생성:
-   - **Email**: `user1@example.com` (원하는 이메일)
+4. 계정 생성:
+   - **Email**: 원하는 이메일
    - **Password**: 강력한 비밀번호 설정
    - **Auto Confirm User**: ✅ 체크
-5. 두 번째 계정도 동일하게 생성
+5. 생성된 사용자의 UUID 복사하여 환경 변수에 설정
 
-### 방법 2: 앱에서 직접 회원가입 (나중에)
+#### 방법 2: 앱에서 직접 회원가입 (나중에)
 
 앱에 회원가입 기능을 추가하면 사용자가 직접 계정을 만들 수 있습니다.
 
@@ -92,6 +119,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ## 7. 테스트
 
 1. 개발 서버 실행:
+
    ```bash
    npm run dev
    ```
@@ -103,19 +131,23 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ## 문제 해결
 
 ### "Invalid API key" 오류
+
 - `.env.local` 파일의 API 키가 올바른지 확인
 - Supabase 대시보드에서 최신 키 복사
 - 개발 서버 재시작 (`npm run dev`)
 
 ### "relation does not exist" 오류
+
 - SQL Editor에서 스키마가 제대로 실행되었는지 확인
 - `supabase/schema.sql` 파일을 다시 실행
 
 ### "permission denied" 오류
+
 - RLS 정책이 제대로 설정되었는지 확인
 - Storage 버킷이 Public으로 설정되었는지 확인
 
 ### 이미지 업로드 실패
+
 - Storage 버킷이 생성되었는지 확인
 - 버킷 이름이 정확히 `place-images`인지 확인
 - 버킷이 Public으로 설정되었는지 확인
@@ -125,4 +157,3 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 - [Supabase 공식 문서](https://supabase.com/docs)
 - [Supabase JavaScript 클라이언트 가이드](https://supabase.com/docs/reference/javascript/introduction)
 - [Row Level Security 가이드](https://supabase.com/docs/guides/auth/row-level-security)
-

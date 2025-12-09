@@ -60,7 +60,22 @@ export default function HomePage() {
   });
 
   useEffect(() => {
-    if (!mapRef.current) return;
+    // mapRef가 준비될 때까지 대기
+    const checkAndInitMap = () => {
+      if (!mapRef.current) {
+        // mapRef가 아직 준비되지 않았으면 다시 시도
+        setTimeout(checkAndInitMap, 100);
+        return;
+      }
+
+      // 이미 지도가 초기화되어 있으면 재초기화하지 않음
+      if (map) {
+        setIsMapLoading(false);
+        return;
+      }
+
+      initMap();
+    };
 
     const initMap = async () => {
       setIsMapLoading(true);
@@ -89,31 +104,47 @@ export default function HomePage() {
           return;
         }
 
-        try {
-          const container = mapRef.current;
-          if (!container) {
-            throw new Error("지도 컨테이너를 찾을 수 없습니다.");
-          }
+        // 컨테이너가 준비될 때까지 대기
+        let retryCount = 0;
+        const maxRetries = 20; // 최대 2초 대기 (100ms * 20)
 
-          const options = {
-            center: new window.kakao.maps.LatLng(37.5665, 126.978),
-            level: 3,
-          };
+        const waitForContainer = (): Promise<HTMLDivElement> => {
+          return new Promise((resolve, reject) => {
+            const checkContainer = () => {
+              const container = mapRef.current;
+              if (
+                container &&
+                container.offsetWidth > 0 &&
+                container.offsetHeight > 0
+              ) {
+                resolve(container);
+              } else if (retryCount < maxRetries) {
+                retryCount++;
+                setTimeout(checkContainer, 100);
+              } else {
+                reject(new Error("지도 컨테이너를 찾을 수 없습니다."));
+              }
+            };
+            checkContainer();
+          });
+        };
 
-          const mapInstance = new window.kakao.maps.Map(container, options);
+        const container = await waitForContainer();
 
-          // 지도 생성 성공 확인
-          if (mapInstance) {
-            setMap(mapInstance);
-            setMapError(null);
-            setIsMapLoading(false);
-          } else {
-            throw new Error("지도 인스턴스 생성 실패");
-          }
-        } catch (mapError: any) {
-          throw new Error(
-            `지도 생성 실패: ${mapError.message || "알 수 없는 오류"}`
-          );
+        const options = {
+          center: new window.kakao.maps.LatLng(37.5665, 126.978),
+          level: 3,
+        };
+
+        const mapInstance = new window.kakao.maps.Map(container, options);
+
+        // 지도 생성 성공 확인
+        if (mapInstance) {
+          setMap(mapInstance);
+          setMapError(null);
+          setIsMapLoading(false);
+        } else {
+          throw new Error("지도 인스턴스 생성 실패");
         }
       } catch (error: any) {
         const errorMsg = error.message || "지도 초기화 실패";
@@ -123,8 +154,16 @@ export default function HomePage() {
       }
     };
 
-    initMap();
-  }, []);
+    // 약간의 지연 후 초기화 시작 (DOM이 완전히 렌더링된 후)
+    const timer = setTimeout(() => {
+      checkAndInitMap();
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 빈 배열로 한 번만 실행, map이 없을 때만 초기화
 
   // 저장된 장소 마커 표시
   useEffect(() => {
@@ -366,8 +405,12 @@ export default function HomePage() {
       const userId = getSupabaseUserId();
       if (!userId) {
         throw new Error(
-          "로그인이 필요하거나 Supabase user_id가 올바르게 설정되지 않았습니다. " +
-            "환경 변수에 실제 Supabase UUID를 설정해주세요."
+          "장소 저장을 위해 Supabase User ID가 필요합니다.\n\n" +
+            "해결 방법:\n" +
+            "1. Supabase 대시보드 > Authentication > Users에서 UUID 확인\n" +
+            "2. Vercel 환경 변수에 USER1_SUPABASE_ID 설정\n" +
+            "3. 재배포 후 다시 시도\n\n" +
+            "자세한 가이드: docs/SUPABASE_USER_ID_SETUP.md"
         );
       }
 

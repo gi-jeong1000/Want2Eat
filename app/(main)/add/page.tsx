@@ -63,8 +63,12 @@ export default function AddPlacePage() {
       const userId = getSupabaseUserId();
       if (!userId) {
         throw new Error(
-          "로그인이 필요하거나 Supabase user_id가 올바르게 설정되지 않았습니다. " +
-          "환경 변수에 실제 Supabase UUID를 설정해주세요."
+          "장소 저장을 위해 Supabase User ID가 필요합니다.\n\n" +
+          "해결 방법:\n" +
+          "1. Supabase 대시보드 > Authentication > Users에서 UUID 확인\n" +
+          "2. Vercel 환경 변수에 USER1_SUPABASE_ID 설정\n" +
+          "3. 재배포 후 다시 시도\n\n" +
+          "자세한 가이드: docs/SUPABASE_USER_ID_SETUP.md"
         );
       }
 
