@@ -57,66 +57,23 @@ export default function PlaceDetailPage() {
   const { data: place, isLoading } = useQuery({
     queryKey: ["place", placeId],
     queryFn: async () => {
-      // 환경 변수가 없으면 null 반환
-      if (
-        !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-        process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder")
-      ) {
+      // 서버 사이드 API를 통해 조회 (RLS 정책 우회)
+      const response = await fetch(`/api/places/${placeId}`, {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          return null;
+        }
+        const errorData = await response.json().catch(() => ({}));
+        console.error("장소 조회 오류:", errorData.error || "알 수 없는 오류");
         return null;
       }
 
-      const { data, error } = await supabase
-        .from("places")
-        .select("*")
-        .eq("id", placeId)
-        .single();
-
-      if (error) {
-        console.error("Supabase 연결 오류:", error);
-        return null;
-      }
-
-      const { data: images, error: imagesError } = await supabase
-        .from("place_images")
-        .select("*")
-        .eq("place_id", placeId);
-
-      if (imagesError) {
-        console.error("이미지 조회 오류:", imagesError);
-      }
-
-      const { data: posts, error: postsError } = await supabase
-        .from("place_posts")
-        .select("*")
-        .eq("place_id", placeId)
-        .order("visited_at", { ascending: false });
-
-      if (postsError) {
-        console.error("포스팅 조회 오류:", postsError);
-      }
-
-      // 포스팅 이미지 가져오기
-      let postsWithImages: PlacePostWithImages[] = [];
-      if (posts && posts.length > 0) {
-        const postsData = posts as any[];
-        const postIds = postsData.map((p) => p.id);
-        const { data: postImages } = await supabase
-          .from("place_post_images")
-          .select("*")
-          .in("post_id", postIds);
-
-        const postImagesData = (postImages || []) as any[];
-        postsWithImages = postsData.map((post) => ({
-          ...post,
-          images: postImagesData.filter((img) => img.post_id === post.id) || [],
-        }));
-      }
-
-      return {
-        ...(data as any),
-        images: images || [],
-        posts: postsWithImages,
-      } as PlaceWithImages;
+      const data = await response.json();
+      return data as PlaceWithImages;
     },
   });
 
