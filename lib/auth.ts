@@ -9,29 +9,30 @@ export interface User {
 }
 
 // 계정 정보 (환경 변수에서 비밀번호 가져오기)
+// ⚠️ 보안: 기본 비밀번호를 제거했습니다. 반드시 환경 변수에 비밀번호를 설정하세요.
 const USER_CONFIG = [
   {
     username: "chun",
-    password: process.env.USER1_PASSWORD || "1009",
+    password: process.env.USER1_PASSWORD,
     name: "기정",
     id: "1",
-    supabaseUserId: process.env.USER1_SUPABASE_ID || "1", // Supabase user_id
+    supabaseUserId: process.env.USER1_SUPABASE_ID,
   },
   {
     username: "haneul",
-    password: process.env.USER2_PASSWORD || "1009",
+    password: process.env.USER2_PASSWORD,
     name: "하늘",
     id: "2",
-    supabaseUserId: process.env.USER2_SUPABASE_ID || "2", // Supabase user_id
+    supabaseUserId: process.env.USER2_SUPABASE_ID,
   },
   {
     username: "test",
-    password: process.env.TEST_USER_PASSWORD || "test123",
+    password: process.env.TEST_USER_PASSWORD,
     name: "테스트",
     id: "3",
-    supabaseUserId: process.env.TEST_USER_SUPABASE_ID || "3", // Supabase user_id
+    supabaseUserId: process.env.TEST_USER_SUPABASE_ID,
   },
-];
+].filter((user) => user.password); // 비밀번호가 설정된 사용자만 포함
 
 export function authenticate(username: string, password: string): User | null {
   const user = USER_CONFIG.find(
