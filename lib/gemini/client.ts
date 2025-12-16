@@ -38,15 +38,15 @@ export async function generatePlaceSummary(
 - 정확한 주소: ${address}
 ${category ? `- 카테고리: ${category}` : ""}
 
-**중요: 반드시 다음 세 가지 정보를 모두 포함하여 응답해주세요. 평점만 작성하면 안 됩니다.**
+**절대 필수: 반드시 다음 세 가지 정보를 모두 포함하여 응답해주세요. 하나라도 빠지면 안 됩니다.**
 
 1. 평점: 5점 만점 기준으로 평가 (소수점 첫째 자리까지, 예: 4.2, 4.5, 4.8)
-2. 한줄평: 식당의 특징, 분위기, 추천 포인트를 간결하게 한 줄로 작성 (50-100자)
-3. 추천 메뉴: 대표 메뉴 1-2개를 제시
+2. 한줄평: 식당의 특징, 분위기, 추천 포인트를 간결하게 한 줄로 작성 (50-100자, 반드시 완전한 문장으로 작성)
+3. 추천 메뉴: 대표 메뉴 1-2개를 제시 (반드시 메뉴명을 명확히 작성)
 
-**응답 형식 (정확히 이 형식을 따라주세요. 세 줄 모두 필수입니다):**
+**응답 형식 (정확히 이 형식을 따라주세요. 세 줄 모두 필수입니다. 절대 생략하지 마세요):**
 평점: ⭐X.X/5.0
-한줄평: [식당의 특징과 분위기를 간결하게 설명하는 한 줄 평가]
+한줄평: [식당의 특징과 분위기를 간결하게 설명하는 완전한 한 줄 평가 문장]
 추천 메뉴: [메뉴명1, 메뉴명2]
 
 **예시 응답 (이 형식을 정확히 따라주세요):**
@@ -54,11 +54,13 @@ ${category ? `- 카테고리: ${category}` : ""}
 한줄평: 신선한 재료와 정성스러운 요리로 유명한 곳으로, 분위기 좋은 데이트 코스로 추천합니다.
 추천 메뉴: 특제 스테이크, 시그니처 파스타
 
-**절대 지켜야 할 규칙:**
-- 평점만 작성하면 안 됩니다.
-- 반드시 세 가지(평점, 한줄평, 추천 메뉴)를 모두 작성해야 합니다.
-- 각 항목은 반드시 "평점:", "한줄평:", "추천 메뉴:"로 시작해야 합니다.
-- 응답은 반드시 세 줄로 구성되어야 합니다.`;
+**중요 규칙 (반드시 지켜주세요):**
+1. 평점만 작성하면 안 됩니다. 반드시 세 가지를 모두 작성해야 합니다.
+2. 한줄평은 반드시 완전한 문장으로 작성해야 합니다. 단어나 짧은 구절만 작성하지 마세요.
+3. 추천 메뉴는 반드시 메뉴명을 명확히 작성해야 합니다. "없음"이나 "확인 불가" 같은 답변은 하지 마세요.
+4. 각 항목은 반드시 "평점:", "한줄평:", "추천 메뉴:"로 시작해야 합니다.
+5. 응답은 반드시 세 줄로 구성되어야 합니다. 줄바꿈을 정확히 해주세요.
+6. 응답을 중간에 끊지 마세요. 반드시 세 가지를 모두 완성해주세요.`;
 
     // 최신 Gemini API 모델 사용 (gemini-2.5-flash는 빠르고 무료 티어에 적합)
     const modelName = "gemini-2.5-flash";
@@ -84,7 +86,7 @@ ${category ? `- 카테고리: ${category}` : ""}
           temperature: 0.3, // 더 일관된 응답을 위해 낮춤
           topK: 40,
           topP: 0.95,
-          maxOutputTokens: 500, // 충분한 응답을 위해 더 증가
+          maxOutputTokens: 1000, // 충분한 응답을 위해 대폭 증가
         },
       }),
     });
@@ -137,34 +139,81 @@ ${category ? `- 카테고리: ${category}` : ""}
         summaryPreview: summary.substring(0, 300),
       });
       
-      // 평점만 있고 다른 정보가 없는 경우 경고 및 재시도 고려
-      if (hasRating && (!hasReview || !hasMenu)) {
-        console.warn("⚠️ Gemini API 응답이 불완전합니다. 평점만 있거나 일부 정보가 누락되었습니다:", {
-          hasRating,
-          hasReview,
-          hasMenu,
-          fullResponse: summary,
-        });
-        
-        // 불완전한 응답이어도 반환 (사용자에게 표시)
-        // 하지만 로그를 통해 문제를 추적할 수 있도록 함
-        // 추후 재시도 로직을 추가할 수 있음
-      }
-      
       // 응답이 완전한지 최종 확인
-      if (!hasRating || !hasReview || !hasMenu) {
+      const isComplete = hasRating && hasReview && hasMenu;
+      
+      if (!isComplete) {
         console.error("❌ Gemini API 응답이 불완전합니다. 모든 필수 항목이 포함되지 않았습니다:", {
           hasRating,
           hasReview,
           hasMenu,
           summaryLength: summary.length,
-          summaryPreview: summary.substring(0, 200),
+          summaryPreview: summary.substring(0, 500),
+          fullResponse: summary,
         });
+        
+        // 불완전한 응답인 경우, 재시도 로직 추가
+        // 하지만 무한 루프를 방지하기 위해 한 번만 재시도
+        console.log("🔄 불완전한 응답으로 인해 재시도합니다...");
+        
+        // 재시도 (한 번만)
+        try {
+          const retryResponse = await fetch(apiUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-goog-api-key": apiKey,
+            },
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [
+                    {
+                      text: prompt + "\n\n**재시도 요청: 이전 응답이 불완전했습니다. 반드시 세 가지(평점, 한줄평, 추천 메뉴)를 모두 포함하여 완전한 응답을 작성해주세요.**",
+                    },
+                  ],
+                },
+              ],
+              generationConfig: {
+                temperature: 0.2, // 재시도 시 더 낮은 temperature로 일관성 확보
+                topK: 40,
+                topP: 0.95,
+                maxOutputTokens: 1000,
+              },
+            }),
+          });
+          
+          if (retryResponse.ok) {
+            const retryData: GeminiResponse = await retryResponse.json();
+            if (retryData.candidates && retryData.candidates[0]?.content?.parts?.[0]?.text) {
+              const retrySummary = retryData.candidates[0].content.parts[0].text.trim();
+              const retryHasRating = retrySummary.includes("평점:");
+              const retryHasReview = retrySummary.includes("한줄평:");
+              const retryHasMenu = retrySummary.includes("추천 메뉴:");
+              
+              if (retryHasRating && retryHasReview && retryHasMenu) {
+                console.log("✅ 재시도 성공! 완전한 응답을 받았습니다.");
+                return retrySummary;
+              } else {
+                console.warn("⚠️ 재시도 후에도 응답이 불완전합니다:", {
+                  hasRating: retryHasRating,
+                  hasReview: retryHasReview,
+                  hasMenu: retryHasMenu,
+                  summaryPreview: retrySummary.substring(0, 200),
+                });
+              }
+            }
+          }
+        } catch (retryError) {
+          console.error("재시도 중 오류 발생:", retryError);
+        }
+        
+        // 재시도 실패 시 원본 응답 반환 (사용자에게 표시)
+        return summary;
       } else {
         console.log("✅ Gemini API 응답이 완전합니다. 모든 필수 항목이 포함되었습니다.");
+        return summary;
       }
-      
-      return summary;
     }
 
     return "";
