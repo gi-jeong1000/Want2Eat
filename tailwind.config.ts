@@ -10,7 +10,7 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["var(--font-pretendard)", "system-ui", "sans-serif"],
+        sans: ["Noto Sans KR", "-apple-system", "BlinkMacSystemFont", "Apple SD Gothic Neo", "Malgun Gothic", "system-ui", "sans-serif"],
       },
       colors: {
         background: "hsl(var(--background))",

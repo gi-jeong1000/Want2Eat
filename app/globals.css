@@ -65,7 +65,7 @@
   }
   body {
     @apply bg-white text-foreground antialiased;
-    font-family: var(--font-pretendard), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-family: "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   }
 }
 
