@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getSupabaseUserIdFromCookie } from "@/lib/get-user-id";
+import { getGroupId } from "@/lib/get-group-id";
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,6 +18,18 @@ export async function POST(request: NextRequest) {
           details: "Supabase User ID가 설정되지 않았습니다. 환경 변수를 확인하세요."
         },
         { status: 401 }
+      );
+    }
+
+    // 모임 ID 가져오기
+    const groupId = getGroupId();
+    if (!groupId) {
+      return NextResponse.json(
+        { 
+          error: "모임 ID가 설정되지 않았습니다.",
+          details: "환경 변수에 NEXT_PUBLIC_GROUP_ID를 설정하세요."
+        },
+        { status: 500 }
       );
     }
 
@@ -53,6 +66,7 @@ export async function POST(request: NextRequest) {
       .from("places")
       .insert({
         user_id: userId,
+        group_id: groupId,
         name: body.name,
         address: body.address,
         latitude: body.latitude,

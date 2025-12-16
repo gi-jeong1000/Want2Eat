@@ -104,10 +104,22 @@ export async function GET(
       }));
     }
 
+    // 코멘트 조회
+    const { data: comments, error: commentsError } = await supabase
+      .from("place_comments")
+      .select("*")
+      .eq("place_id", placeId)
+      .order("created_at", { ascending: true });
+
+    if (commentsError) {
+      console.error("코멘트 조회 오류:", commentsError);
+    }
+
     return NextResponse.json({
       ...place,
       images: images || [],
       posts: postsWithImages,
+      comments: comments || [],
     });
   } catch (error: any) {
     console.error("서버 오류:", error);

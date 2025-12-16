@@ -1,8 +1,23 @@
 export type PlaceStatus = "want_to_go" | "visited" | "want_to_visit_again";
 
+export interface Group {
+  id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GroupMember {
+  id: string;
+  group_id: string;
+  user_id: string;
+  created_at: string;
+}
+
 export interface Place {
   id: string;
   user_id: string;
+  group_id: string;
   name: string;
   address: string;
   latitude: number;
@@ -47,14 +62,16 @@ export interface PlacePostWithImages extends PlacePost {
 export interface PlaceWithImages extends Place {
   images: PlaceImage[];
   posts?: PlacePostWithImages[];
+  comments?: PlaceComment[];
 }
 
-export interface PlaceShare {
+export interface PlaceComment {
   id: string;
   place_id: string;
-  shared_by: string;
-  shared_with: string;
+  user_id: string;
+  content: string;
   created_at: string;
+  updated_at: string;
 }
 
 export interface NaverPlace {

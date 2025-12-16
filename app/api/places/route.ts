@@ -85,6 +85,22 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // 코멘트 조회
+    let commentsData: any[] = [];
+    if (placeIds.length > 0) {
+      const { data: comments, error: commentsError } = await supabase
+        .from("place_comments")
+        .select("*")
+        .in("place_id", placeIds)
+        .order("created_at", { ascending: true });
+
+      if (commentsError) {
+        console.error("코멘트 조회 오류:", commentsError);
+      } else {
+        commentsData = comments || [];
+      }
+    }
+
     // 데이터 결합
     const placesWithImages = (placesData || []).map((place) => ({
       ...place,
@@ -96,6 +112,7 @@ export async function GET(request: NextRequest) {
             ...post,
             images: [],
           })) || [],
+      comments: commentsData.filter((comment) => comment.place_id === place.id) || [],
     }));
 
     return NextResponse.json(placesWithImages);

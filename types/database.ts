@@ -9,10 +9,51 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      groups: {
+        Row: {
+          id: string;
+          name: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      group_members: {
+        Row: {
+          id: string;
+          group_id: string;
+          user_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          group_id: string;
+          user_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          group_id?: string;
+          user_id?: string;
+          created_at?: string;
+        };
+      };
       places: {
         Row: {
           id: string;
           user_id: string;
+          group_id: string;
           name: string;
           address: string;
           latitude: number;
@@ -27,6 +68,7 @@ export interface Database {
         Insert: {
           id?: string;
           user_id: string;
+          group_id: string;
           name: string;
           address: string;
           latitude: number;
@@ -41,6 +83,7 @@ export interface Database {
         Update: {
           id?: string;
           user_id?: string;
+          group_id?: string;
           name?: string;
           address?: string;
           latitude?: number;
@@ -125,27 +168,30 @@ export interface Database {
           created_at?: string;
         };
       };
-      place_shares: {
+      place_comments: {
         Row: {
           id: string;
           place_id: string;
-          shared_by: string;
-          shared_with: string;
+          user_id: string;
+          content: string;
           created_at: string;
+          updated_at: string;
         };
         Insert: {
           id?: string;
           place_id: string;
-          shared_by: string;
-          shared_with: string;
+          user_id: string;
+          content: string;
           created_at?: string;
+          updated_at?: string;
         };
         Update: {
           id?: string;
           place_id?: string;
-          shared_by?: string;
-          shared_with?: string;
+          user_id?: string;
+          content?: string;
           created_at?: string;
+          updated_at?: string;
         };
       };
     };

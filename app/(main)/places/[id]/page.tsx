@@ -23,14 +23,17 @@ import {
   Plus,
   Share2,
   User,
+  MessageSquare,
 } from "lucide-react";
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale/ko";
-import { PlaceStatus, PlacePostWithImages } from "@/types";
+import { PlaceStatus, PlacePostWithImages, PlaceComment } from "@/types";
 import { PlacePostCard } from "@/components/places/PlacePostCard";
 import { PlacePostForm } from "@/components/places/PlacePostForm";
+import { PlaceCommentCard } from "@/components/places/PlaceCommentCard";
+import { PlaceCommentForm } from "@/components/places/PlaceCommentForm";
 import { getUserNameBySupabaseId } from "@/lib/get-user-name";
 
 export default function PlaceDetailPage() {
@@ -44,6 +47,7 @@ export default function PlaceDetailPage() {
   const [showPostForm, setShowPostForm] = useState(false);
   const [shareEmail, setShareEmail] = useState("");
   const [showShareForm, setShowShareForm] = useState(false);
+  const [showCommentForm, setShowCommentForm] = useState(false);
 
   // params.id를 안전하게 처리
   const placeId = typeof params.id === "string" ? params.id : params.id?.[0];
@@ -263,6 +267,34 @@ export default function PlaceDetailPage() {
       alert("장소가 공유되었습니다!");
     },
   });
+
+  const createCommentMutation = useMutation({
+    mutationFn: async (content: string) => {
+      const response = await fetch(`/api/places/${placeId}/comments`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ content }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "코멘트 작성에 실패했습니다.");
+      }
+
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["place", placeId] });
+      setShowCommentForm(false);
+    },
+  });
+
+  const handleCreateComment = (content: string) => {
+    createCommentMutation.mutate(content);
+  };
 
   const handleSave = () => {
     updateMutation.mutate({
@@ -702,6 +734,62 @@ export default function PlaceDetailPage() {
                 className="mt-4"
               >
                 <Plus className="h-4 w-4 mr-2" />첫 포스팅 작성하기
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 코멘트 섹션 */}
+      <div className="mt-8">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-2xl font-bold">코멘트</h2>
+            <p className="text-muted-foreground text-sm mt-1">
+              구성원들과 자유롭게 소통해보세요
+            </p>
+          </div>
+          {!showCommentForm && (
+            <Button onClick={() => setShowCommentForm(true)}>
+              <MessageSquare className="h-4 w-4 mr-2" />
+              코멘트 작성
+            </Button>
+          )}
+        </div>
+
+        {showCommentForm && (
+          <div className="mb-6">
+            <PlaceCommentForm
+              placeId={placeId}
+              onSubmit={handleCreateComment}
+              isLoading={createCommentMutation.isPending}
+            />
+          </div>
+        )}
+
+        {place.comments && place.comments.length > 0 ? (
+          <div className="space-y-4">
+            {place.comments.map((comment: PlaceComment) => (
+              <PlaceCommentCard
+                key={comment.id}
+                comment={comment}
+                placeId={placeId}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 bg-muted/30 rounded-lg">
+            <p className="text-muted-foreground">
+              아직 작성된 코멘트가 없습니다.
+            </p>
+            {!showCommentForm && (
+              <Button
+                variant="outline"
+                onClick={() => setShowCommentForm(true)}
+                className="mt-4"
+              >
+                <MessageSquare className="h-4 w-4 mr-2" />
+                첫 코멘트 작성하기
               </Button>
             )}
           </div>
