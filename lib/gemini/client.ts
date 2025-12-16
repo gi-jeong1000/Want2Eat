@@ -31,29 +31,34 @@ export async function generatePlaceSummary(
   }
 
   try {
-    const prompt = `당신은 음식 평론가입니다.
-
-지금부터 제공하는 식당 장소, 위치를 기반으로 가장 최신의 정보를 취합하여 식당에 대한 평점과 한줄평, 추천 메뉴를 간결하게 요약해주세요.
+    const prompt = `당신은 전문 음식 평론가입니다. 제공된 식당 정보를 바탕으로 상세한 평가를 작성해주세요.
 
 식당 정보:
 - 식당 이름: ${placeName}
 - 정확한 주소: ${address}
 ${category ? `- 카테고리: ${category}` : ""}
 
-요구사항:
-1. 평점: 5점 만점 기준으로 평가 (예: ⭐4.2/5.0)
-2. 한줄평: 식당의 특징과 분위기를 간결하게 한 줄로 작성 (최대 80자)
-3. 추천 메뉴: 대표 메뉴 1-2개를 간단히 제시
+반드시 다음 세 가지 정보를 모두 포함하여 응답해주세요:
 
-응답 형식:
+1. 평점: 5점 만점 기준으로 평가 (소수점 첫째 자리까지, 예: 4.2, 4.5, 4.8)
+2. 한줄평: 식당의 특징, 분위기, 추천 포인트를 간결하게 한 줄로 작성 (50-100자)
+3. 추천 메뉴: 대표 메뉴 1-2개를 제시
+
+응답 형식 (정확히 이 형식을 따라주세요):
 평점: ⭐X.X/5.0
-한줄평: [한 줄 요약]
-추천 메뉴: [메뉴명]
+한줄평: [식당의 특징과 분위기를 간결하게 설명하는 한 줄 평가]
+추천 메뉴: [메뉴명1, 메뉴명2]
 
-예시:
+예시 응답:
 평점: ⭐4.3/5.0
 한줄평: 신선한 재료와 정성스러운 요리로 유명한 곳으로, 분위기 좋은 데이트 코스로 추천합니다.
-추천 메뉴: 특제 스테이크, 시그니처 파스타`;
+추천 메뉴: 특제 스테이크, 시그니처 파스타
+
+중요: 
+- 평점, 한줄평, 추천 메뉴 세 가지를 모두 반드시 포함해야 합니다.
+- 평점만 작성하지 마세요. 반드시 세 가지를 모두 작성해주세요.
+- 위 예시 형식을 정확히 따라주세요.
+- 응답은 반드시 세 줄로 구성되어야 합니다: 평점 한 줄, 한줄평 한 줄, 추천 메뉴 한 줄.`;
 
     // 최신 Gemini API 모델 사용 (gemini-2.5-flash는 빠르고 무료 티어에 적합)
     const modelName = "gemini-2.5-flash";
@@ -79,7 +84,7 @@ ${category ? `- 카테고리: ${category}` : ""}
           temperature: 0.7,
           topK: 40,
           topP: 0.95,
-          maxOutputTokens: 200,
+          maxOutputTokens: 300, // 충분한 응답을 위해 증가
         },
       }),
     });
@@ -117,7 +122,23 @@ ${category ? `- 카테고리: ${category}` : ""}
       data.candidates &&
       data.candidates[0]?.content?.parts?.[0]?.text
     ) {
-      return data.candidates[0].content.parts[0].text.trim();
+      const summary = data.candidates[0].content.parts[0].text.trim();
+      
+      // 응답에 세 가지 항목이 모두 포함되어 있는지 확인
+      const hasRating = summary.includes("평점:");
+      const hasReview = summary.includes("한줄평:");
+      const hasMenu = summary.includes("추천 메뉴:");
+      
+      if (!hasRating || !hasReview || !hasMenu) {
+        console.warn("Gemini API 응답이 형식에 맞지 않습니다:", {
+          hasRating,
+          hasReview,
+          hasMenu,
+          summary: summary.substring(0, 200),
+        });
+      }
+      
+      return summary;
     }
 
     return "";
