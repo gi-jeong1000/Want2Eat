@@ -126,9 +126,37 @@ export default function HomePage() {
         const options = {
           center: new window.kakao.maps.LatLng(37.5665, 126.978),
           level: 3,
+          // 모바일에서 확대 방지
+          draggable: true,
+          scrollwheel: false, // 마우스 휠로 확대/축소 비활성화
+          disableDoubleClick: true, // 더블클릭 확대 비활성화
+          disableDoubleClickZoom: true, // 더블클릭 줌 비활성화
+          keyboardShortcuts: false, // 키보드 단축키 비활성화
         };
 
         const mapInstance = new window.kakao.maps.Map(container, options);
+        
+        // 터치 이벤트로 확대/축소 방지
+        mapInstance.setZoomable(false);
+        
+        // 터치 제스처로 확대 방지 (모바일)
+        if (container) {
+          let lastTouchEnd = 0;
+          container.addEventListener('touchend', (event) => {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) {
+              event.preventDefault();
+            }
+            lastTouchEnd = now;
+          }, false);
+          
+          // 핀치 줌 방지
+          container.addEventListener('touchmove', (event) => {
+            if (event.touches.length > 1) {
+              event.preventDefault();
+            }
+          }, { passive: false });
+        }
 
         // 지도 생성 성공 확인
         if (mapInstance) {
@@ -522,7 +550,7 @@ export default function HomePage() {
               <div ref={mapRef} className="w-full h-full" />
 
               {/* 검색 바 */}
-              <div className="absolute top-6 left-4 right-4 z-[100] max-w-md animate-slide-up">
+              <div className="fixed md:absolute top-4 md:top-6 left-0 right-0 md:left-4 md:right-4 z-[100] max-w-md md:mx-auto px-4 md:px-0 animate-slide-up">
                 <Card className="shadow-soft-lg border-white/30">
                   <CardContent className="p-4">
                     <form onSubmit={handleSearch} className="flex gap-3">
@@ -575,7 +603,7 @@ export default function HomePage() {
 
               {/* 장소 상세 정보 모달 */}
               {selectedPlaceDetail && (
-                <div className="absolute top-24 left-4 right-4 z-[100] max-w-md">
+                <div className="fixed md:absolute top-20 md:top-24 left-0 right-0 md:left-4 md:right-4 z-[100] max-w-md md:mx-auto px-4 md:px-0">
                   <Card className="shadow-lg">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between mb-3">
@@ -644,7 +672,7 @@ export default function HomePage() {
 
               {/* 검색 결과 리스트 */}
               {showSearchResults && (
-                <div className="absolute top-28 left-4 right-4 z-[100] max-w-md max-h-[60vh] overflow-y-auto animate-slide-up">
+                <div className="fixed md:absolute top-20 md:top-28 left-0 right-0 md:left-4 md:right-4 z-[100] max-w-md md:mx-auto px-4 md:px-0 max-h-[calc(100vh-8rem)] overflow-y-auto animate-slide-up">
                   <Card className="shadow-soft-lg border-sky-100/50">
                     <CardContent className="p-5">
                       <div className="flex items-center justify-between mb-4">
@@ -763,10 +791,10 @@ export default function HomePage() {
 
               {/* 저장된 장소 개수 표시 */}
               {places && places.length > 0 && (
-                <div className="absolute bottom-6 right-6 z-[100] animate-fade-in">
+                <div className="fixed md:absolute bottom-20 md:bottom-6 left-4 right-4 md:left-auto md:right-6 z-[100] animate-fade-in max-w-xs md:max-w-none">
                   <Card className="shadow-soft-lg border-sky-100/50 bg-gradient-to-r from-sky-500/10 to-blue-500/10">
-                    <CardContent className="p-4">
-                      <p className="text-sm font-bold gradient-text">
+                    <CardContent className="p-3 md:p-4">
+                      <p className="text-sm font-bold gradient-text text-center md:text-left">
                         저장된 장소: {places.length}개
                       </p>
                     </CardContent>
