@@ -45,7 +45,7 @@ export function Logo({ className, size = "md", showText = true }: LogoProps) {
             "group-hover:from-blue-700 group-hover:to-sky-700 transition-colors"
           )}
         >
-          Want2Eat
+          하느리의 맛집 지도
         </span>
       )}
     </Link>

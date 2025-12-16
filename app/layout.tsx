@@ -3,7 +3,7 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 
 export const metadata: Metadata = {
-  title: "Want2Eat - 가고 싶은 장소를 함께 기록하세요",
+  title: "하느리의 맛집 지도 - 가고 싶은 장소를 함께 기록하세요",
   description: "연인, 친구와 함께 가고 싶은 장소를 저장하고 기록하는 서비스",
 };
 
