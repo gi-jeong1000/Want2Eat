@@ -108,7 +108,7 @@ echo $GEMINI_API_KEY
 
 ```javascript
 fetch(
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=YOUR_API_KEY",
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=YOUR_API_KEY",
   {
     method: "POST",
     headers: { "Content-Type": "application/json" },

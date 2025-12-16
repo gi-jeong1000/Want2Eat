@@ -1,6 +1,9 @@
 /**
  * Google Gemini API 클라이언트
  * 무료 티어 사용 (15 RPM, 1500 RPD)
+ * 
+ * 사용 모델: gemini-1.5-flash (빠르고 무료 티어에 적합)
+ * 대안: gemini-1.5-pro (더 강력하지만 느림)
  */
 
 interface GeminiResponse {
@@ -50,32 +53,33 @@ ${category ? `- 카테고리: ${category}` : ""}
 한줄평: 신선한 재료와 정성스러운 요리로 유명한 곳으로, 분위기 좋은 데이트 코스로 추천합니다.
 추천 메뉴: 특제 스테이크, 시그니처 파스타`;
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: prompt,
-                },
-              ],
-            },
-          ],
-          generationConfig: {
-            temperature: 0.7,
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 200,
+    // 최신 Gemini API 모델 사용 (gemini-1.5-flash는 빠르고 무료 티어에 적합)
+    const modelName = "gemini-1.5-flash";
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+    
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: prompt,
+              },
+            ],
           },
-        }),
-      }
-    );
+        ],
+        generationConfig: {
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 200,
+        },
+      }),
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
