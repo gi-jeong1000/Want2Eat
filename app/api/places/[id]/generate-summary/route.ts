@@ -53,7 +53,7 @@ export async function POST(
     // 장소 정보 조회
     const { data: place, error: placeError } = await supabase
       .from("places")
-      .select("name, address")
+      .select("name, address, naver_place_id")
       .eq("id", placeId)
       .single();
 
@@ -65,16 +65,60 @@ export async function POST(
       );
     }
 
-    // Gemini API로 요약 생성
-    const aiSummary = await generatePlaceSummary(
-      place.name,
-      place.address
-    );
+    // 카테고리 정보 가져오기 (카카오 맵에서)
+    let category: string | undefined = undefined;
+    if (place.naver_place_id) {
+      try {
+        // 장소 이름으로 카카오 맵에서 카테고리 정보 가져오기
+        const kakaoResponse = await fetch(
+          `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(place.name)}&size=1`,
+          {
+            headers: {
+              Authorization: `KakaoAK ${process.env.KAKAO_REST_API_KEY}`,
+            },
+          }
+        );
+        if (kakaoResponse.ok) {
+          const kakaoData = await kakaoResponse.json();
+          if (kakaoData.documents && kakaoData.documents.length > 0) {
+            category = kakaoData.documents[0].category_name;
+          }
+        }
+      } catch (err) {
+        console.warn("카테고리 정보 조회 실패:", err);
+        // 카테고리 정보가 없어도 계속 진행
+      }
+    }
 
-    if (!aiSummary) {
+    // Gemini API로 요약 생성
+    let aiSummary = "";
+    try {
+      aiSummary = await generatePlaceSummary(
+        place.name,
+        place.address,
+        category
+      );
+    } catch (error) {
+      console.error("Gemini API 호출 오류:", error);
       return NextResponse.json(
-        { error: "AI 요약 생성에 실패했습니다." },
+        { 
+          error: "AI 요약 생성 중 오류가 발생했습니다.",
+          details: error instanceof Error ? error.message : String(error)
+        },
         { status: 500 }
+      );
+    }
+
+    // 요약이 비어있으면 실패로 처리하지 않고 빈 문자열로 저장
+    // (API 키가 없거나 다른 이유로 생성 실패한 경우)
+    if (!aiSummary) {
+      console.warn("AI 요약이 생성되지 않았습니다. (API 키 미설정 또는 제한 초과 가능)");
+      return NextResponse.json(
+        { 
+          success: false,
+          error: "AI 요약을 생성할 수 없습니다. API 키를 확인하거나 잠시 후 다시 시도해주세요.",
+        },
+        { status: 200 } // 500 대신 200으로 반환하여 클라이언트에서 처리 가능하도록
       );
     }
 
