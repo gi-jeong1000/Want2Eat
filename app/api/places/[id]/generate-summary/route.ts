@@ -123,6 +123,10 @@ export async function POST(
       console.log("Gemini API 응답:", {
         hasSummary: !!aiSummary,
         summaryLength: aiSummary?.length || 0,
+        summaryPreview: aiSummary?.substring(0, 200) || "",
+        hasRating: aiSummary?.includes("평점:") || false,
+        hasReview: aiSummary?.includes("한줄평:") || false,
+        hasMenu: aiSummary?.includes("추천 메뉴:") || false,
       });
     } catch (error) {
       console.error("Gemini API 호출 오류:", {
