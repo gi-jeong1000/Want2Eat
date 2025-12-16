@@ -5,49 +5,44 @@ import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getSupabaseUserId } from "@/lib/get-user-id";
 import { PlaceWithImages } from "@/types";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import {
   MapPin,
   Star,
   CheckCircle2,
-  Circle,
   Trash2,
-  Save,
   Loader2,
   Heart,
   Calendar,
   Plus,
-  Share2,
   User,
   MessageSquare,
+  ArrowLeft,
+  Utensils,
+  Phone,
+  Globe,
 } from "lucide-react";
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale/ko";
-import { PlaceStatus, PlacePostWithImages, PlaceComment } from "@/types";
-import { PlacePostCard } from "@/components/places/PlacePostCard";
-import { PlacePostForm } from "@/components/places/PlacePostForm";
+import { PlaceStatus, PlaceComment } from "@/types";
 import { PlaceCommentCard } from "@/components/places/PlaceCommentCard";
 import { PlaceCommentForm } from "@/components/places/PlaceCommentForm";
+import { PlacePostForm } from "@/components/places/PlacePostForm";
 import { getUserNameBySupabaseId } from "@/lib/get-user-name";
+import { getPlaceDetail } from "@/lib/kakao/place";
 
 export default function PlaceDetailPage() {
   const params = useParams();
   const router = useRouter();
   const supabase = createClient();
   const queryClient = useQueryClient();
-  const [comment, setComment] = useState("");
-  const [status, setStatus] = useState<PlaceStatus>("want_to_go");
-  const [isEditing, setIsEditing] = useState(false);
-  const [showPostForm, setShowPostForm] = useState(false);
-  const [shareEmail, setShareEmail] = useState("");
-  const [showShareForm, setShowShareForm] = useState(false);
   const [showCommentForm, setShowCommentForm] = useState(false);
+  const [showPostForm, setShowPostForm] = useState(false);
+  const [kakaoDetail, setKakaoDetail] = useState<any>(null);
 
   // params.id를 안전하게 처리
   const placeId = typeof params.id === "string" ? params.id : params.id?.[0];
@@ -63,7 +58,6 @@ export default function PlaceDetailPage() {
   const { data: place, isLoading } = useQuery({
     queryKey: ["place", placeId],
     queryFn: async () => {
-      // 서버 사이드 API를 통해 조회 (RLS 정책 우회)
       const response = await fetch(`/api/places/${placeId}`, {
         method: "GET",
         credentials: "include",
@@ -83,48 +77,17 @@ export default function PlaceDetailPage() {
     },
   });
 
+  // 카카오 맵 상세 정보 가져오기
   useEffect(() => {
-    if (place) {
-      setComment(place.comment || "");
-      setStatus(place.status);
+    if (place?.naver_place_id) {
+      getPlaceDetail(place.naver_place_id)
+        .then((detail) => setKakaoDetail(detail))
+        .catch((err) => console.error("카카오 상세 정보 조회 실패:", err));
     }
-  }, [place]);
-
-  const updateMutation = useMutation({
-    mutationFn: async (updates: { comment?: string; status?: PlaceStatus }) => {
-      // 환경 변수가 없으면 에러 발생
-      if (
-        !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-        process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder")
-      ) {
-        throw new Error("Supabase가 설정되지 않았습니다.");
-      }
-
-      const updateData = {
-        ...updates,
-        updated_at: new Date().toISOString(),
-      } as any;
-
-      // @ts-ignore - Supabase 타입 추론 문제
-      const { data, error } = await (supabase.from("places") as any)
-        .update(updateData)
-        .eq("id", placeId)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["place", placeId] });
-      queryClient.invalidateQueries({ queryKey: ["places"] });
-      setIsEditing(false);
-    },
-  });
+  }, [place?.naver_place_id]);
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      // 환경 변수가 없으면 에러 발생
       if (
         !process.env.NEXT_PUBLIC_SUPABASE_URL ||
         process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder")
@@ -132,20 +95,15 @@ export default function PlaceDetailPage() {
         throw new Error("Supabase가 설정되지 않았습니다.");
       }
 
-      // 이미지 삭제
       if (place?.images && place.images.length > 0) {
         const imagePaths = place.images.map((img) => {
           const url = new URL(img.image_url);
           return url.pathname.split("/").slice(-2).join("/");
         });
-
         await supabase.storage.from("place-images").remove(imagePaths);
       }
 
-      // place_images 테이블에서 삭제
       await supabase.from("place_images").delete().eq("place_id", placeId);
-
-      // places 테이블에서 삭제
       const { error } = await supabase
         .from("places")
         .delete()
@@ -158,6 +116,34 @@ export default function PlaceDetailPage() {
       router.push("/places");
     },
   });
+
+  const createCommentMutation = useMutation({
+    mutationFn: async (content: string) => {
+      const response = await fetch(`/api/places/${placeId}/comments`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ content }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "코멘트 작성에 실패했습니다.");
+      }
+
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["place", placeId] });
+      setShowCommentForm(false);
+    },
+  });
+
+  const handleCreateComment = (content: string) => {
+    createCommentMutation.mutate(content);
+  };
 
   const createPostMutation = useMutation({
     mutationFn: async (data: {
@@ -173,11 +159,9 @@ export default function PlaceDetailPage() {
         throw new Error("Supabase가 설정되지 않았습니다.");
       }
 
-      // 파일 기반 인증에서 user_id 가져오기
       const userId = getSupabaseUserId();
       if (!userId) throw new Error("로그인이 필요합니다.");
 
-      // 포스팅 생성
       const { data: post, error: postError } = await supabase
         .from("place_posts")
         .insert({
@@ -192,10 +176,8 @@ export default function PlaceDetailPage() {
 
       if (postError) throw postError;
 
-      // 타입 단언
       const postData = post as { id: string } | null;
 
-      // 이미지 업로드
       if (data.images.length > 0 && postData) {
         const uploadPromises = data.images.map(async (file) => {
           const fileExt = file.name.split(".").pop();
@@ -235,74 +217,6 @@ export default function PlaceDetailPage() {
     },
   });
 
-  const sharePlaceMutation = useMutation({
-    mutationFn: async (email: string) => {
-      if (
-        !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-        process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder")
-      ) {
-        throw new Error("Supabase가 설정되지 않았습니다.");
-      }
-
-      // 파일 기반 인증에서 user_id 가져오기
-      const userId = getSupabaseUserId();
-      if (!userId) throw new Error("로그인이 필요합니다.");
-
-      // 공유 기능: 이메일로 사용자 찾기
-      // Supabase에서는 auth.users를 직접 조회할 수 없으므로
-      // 간단하게 공유 링크를 생성하거나, 사용자 프로필 테이블을 만들어야 함
-      // 여기서는 공유 기능을 나중에 구현하고, 일단 알림만 표시
-
-      // TODO: 공유 기능 구현
-      // 1. 사용자 프로필 테이블 생성 (email, user_id)
-      // 2. 이메일로 사용자 찾기
-      // 3. place_shares에 저장
-
-      alert("공유 기능은 준비 중입니다. 곧 사용할 수 있습니다!");
-      throw new Error("공유 기능 준비 중");
-    },
-    onSuccess: () => {
-      setShareEmail("");
-      setShowShareForm(false);
-      alert("장소가 공유되었습니다!");
-    },
-  });
-
-  const createCommentMutation = useMutation({
-    mutationFn: async (content: string) => {
-      const response = await fetch(`/api/places/${placeId}/comments`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ content }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "코멘트 작성에 실패했습니다.");
-      }
-
-      return await response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["place", placeId] });
-      setShowCommentForm(false);
-    },
-  });
-
-  const handleCreateComment = (content: string) => {
-    createCommentMutation.mutate(content);
-  };
-
-  const handleSave = () => {
-    updateMutation.mutate({
-      comment,
-      status,
-    });
-  };
-
   const handleCreatePost = (data: {
     title: string;
     content: string;
@@ -312,29 +226,21 @@ export default function PlaceDetailPage() {
     createPostMutation.mutate(data);
   };
 
-  const handleShare = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!shareEmail.trim()) {
-      alert("이메일을 입력해주세요.");
-      return;
-    }
-    sharePlaceMutation.mutate(shareEmail);
-  };
-
   const handleDelete = () => {
     if (confirm("정말 이 장소를 삭제하시겠습니까?")) {
       deleteMutation.mutate();
     }
   };
 
+  const currentUserId = getSupabaseUserId();
+  const isOwner = place && currentUserId === place.user_id;
+
   if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-            <p className="text-muted-foreground">로딩 중...</p>
-          </div>
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-gray-500">로딩 중...</p>
         </div>
       </div>
     );
@@ -342,17 +248,9 @@ export default function PlaceDetailPage() {
 
   if (!place) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-            <MapPin className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <h2 className="text-xl font-semibold mb-2">
-            장소를 찾을 수 없습니다
-          </h2>
-          <p className="text-muted-foreground mb-6">
-            요청하신 장소가 존재하지 않거나 삭제되었습니다.
-          </p>
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <p className="text-gray-500 mb-4">장소를 찾을 수 없습니다.</p>
           <Button onClick={() => router.push("/places")}>
             장소 목록으로 돌아가기
           </Button>
@@ -361,439 +259,347 @@ export default function PlaceDetailPage() {
     );
   }
 
+  // 상태 태그 스타일
+  const getStatusTag = () => {
+    if (place.status === "want_to_go") {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+          <Calendar className="h-3.5 w-3.5" />
+          갈 곳
+        </span>
+      );
+    }
+    if (place.status === "visited") {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+          <CheckCircle2 className="h-3.5 w-3.5" />
+          갔던 곳
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-pink-50 text-pink-700 border border-pink-200">
+        <Heart className="h-3.5 w-3.5" />
+        또 가고 싶은 곳
+      </span>
+    );
+  };
+
   return (
-    <div className="container mx-auto px-4 py-8 max-w-5xl animate-fade-in">
-      <div className="mb-8">
-        <Button
-          variant="ghost"
-          onClick={() => router.back()}
-          className="mb-6 -ml-2 rounded-xl hover:bg-sky-100/80"
-        >
-          ← 뒤로가기
-        </Button>
-        <div className="flex items-start justify-between gap-4 mb-6">
-          <div className="flex-1">
-            <h1 className="text-4xl font-bold mb-3 gradient-text">{place.name}</h1>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <MapPin className="h-5 w-5 text-sky-500" />
-              <span className="text-base">{place.address}</span>
-            </div>
-          </div>
-          {place.status === "want_to_go" && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-sky-50 text-sky-700 rounded-full text-sm font-medium">
-              <Calendar className="h-4 w-4" />갈 곳
-            </div>
-          )}
-          {place.status === "visited" && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-cyan-50 text-cyan-700 rounded-full text-sm font-medium">
-              <CheckCircle2 className="h-4 w-4" />
-              갔던 곳
-            </div>
-          )}
-          {place.status === "want_to_visit_again" && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">
-              <Heart className="h-4 w-4" />또 가고 싶은 곳
-            </div>
-          )}
+    <div className="min-h-screen bg-gray-50">
+      {/* 뒤로가기 버튼 */}
+      <div className="sticky top-0 z-40 bg-white border-b border-gray-200">
+        <div className="max-w-2xl mx-auto px-4 py-3">
+          <Button
+            variant="ghost"
+            onClick={() => router.back()}
+            className="h-9 px-3 -ml-2"
+          >
+            <ArrowLeft className="h-5 w-5 mr-1" />
+            뒤로
+          </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-6">
-          {place.images && place.images.length > 0 && (
-            <Card className="shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <span>사진</span>
-                  <span className="text-sm font-normal text-muted-foreground">
-                    ({place.images.length}장)
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-3">
-                  {place.images.map((image) => (
-                    <div
-                      key={image.id}
-                      className="relative aspect-square rounded-lg overflow-hidden border border-border group"
-                    >
-                      <Image
-                        src={image.image_url}
-                        alt={place.name}
-                        fill
-                        className="object-cover group-hover:scale-110 transition-transform duration-300"
-                        unoptimized
-                      />
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+      <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+        {/* 1. 식당 사진 (카카오 맵 기반) */}
+        <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gray-100">
+          {place.images && place.images.length > 0 ? (
+            <Image
+              src={place.images[0].image_url}
+              alt={place.name}
+              fill
+              className="object-cover"
+              priority
+              unoptimized
+            />
+          ) : kakaoDetail?.place_url ? (
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-sky-50">
+              <div className="text-center">
+                <MapPin className="h-16 w-16 text-blue-300 mx-auto mb-3" />
+                <p className="text-sm text-gray-500">사진 없음</p>
+                <a
+                  href={kakaoDetail.place_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-blue-500 hover:underline mt-2 inline-block"
+                >
+                  카카오맵에서 보기
+                </a>
+              </div>
+            </div>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-sky-50">
+              <MapPin className="h-16 w-16 text-blue-300" />
+            </div>
           )}
-
-          <Card className="shadow-soft border-sky-100/50">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-sky-500" />
-                위치 정보
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-start text-sm">
-                <MapPin className="h-4 w-4 mr-2 text-sky-500 mt-0.5 flex-shrink-0" />
-                <span className="break-words">{place.address}</span>
-              </div>
-              {place.rating && (
-                <div className="flex items-center text-sm pt-2 border-t border-sky-100">
-                  <Star className="h-4 w-4 fill-amber-400 text-amber-400 mr-2" />
-                  <span className="font-medium">
-                    네이버 별점: {place.rating.toFixed(1)}
-                  </span>
-                </div>
-              )}
-              <div className="flex items-center gap-1.5 text-sm pt-2 border-t border-sky-100">
-                <User className="h-4 w-4 text-sky-500" />
-                <span className="text-muted-foreground">
-                  저장한 사람: {getUserNameBySupabaseId(place.user_id) || "알 수 없음"}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
-        <div className="space-y-6">
-          <Card className="shadow-sm">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>상태 및 코멘트</CardTitle>
-                {isEditing ? (
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setIsEditing(false);
-                        setComment(place.comment || "");
-                        setStatus(place.status);
-                      }}
-                      disabled={updateMutation.isPending}
-                    >
-                      취소
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={handleSave}
-                      disabled={updateMutation.isPending}
-                    >
-                      {updateMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                      ) : (
-                        <Save className="h-4 w-4 mr-1" />
-                      )}
-                      저장
-                    </Button>
-                  </div>
-                ) : (
+        {/* 2. 식당 이름 + 태그 (갈곳/간곳, 작성자, 삭제 버튼) */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <div className="flex items-start justify-between gap-4 mb-4">
+            <div className="flex-1">
+              <h1 className="text-2xl font-bold text-gray-900 mb-3">
+                {place.name}
+              </h1>
+              <div className="flex flex-wrap items-center gap-2">
+                {getStatusTag()}
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-gray-50 text-gray-700 border border-gray-200">
+                  <User className="h-3.5 w-3.5" />
+                  {getUserNameBySupabaseId(place.user_id) || "알 수 없음"}
+                </span>
+                {isOwner && (
                   <Button
+                    variant="ghost"
                     size="sm"
-                    variant="outline"
-                    onClick={() => setIsEditing(true)}
+                    onClick={handleDelete}
+                    disabled={deleteMutation.isPending}
+                    className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
                   >
-                    수정
+                    {deleteMutation.isPending ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-3.5 w-3.5" />
+                    )}
                   </Button>
                 )}
               </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {isEditing ? (
-                <div className="space-y-3">
-                  <Label>상태 선택</Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setStatus("want_to_go")}
-                      className={`p-3 rounded-lg border-2 transition-all ${
-                        status === "want_to_go"
-                          ? "border-blue-500 bg-blue-50"
-                          : "border-border hover:border-blue-300"
-                      }`}
-                    >
-                      <div className="text-center">
-                        <div className="text-xl mb-1">📅</div>
-                        <div className="text-xs font-medium">갈 곳</div>
-                      </div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setStatus("visited")}
-                      className={`p-3 rounded-lg border-2 transition-all ${
-                        status === "visited"
-                          ? "border-green-500 bg-green-50"
-                          : "border-border hover:border-green-300"
-                      }`}
-                    >
-                      <div className="text-center">
-                        <div className="text-xl mb-1">✅</div>
-                        <div className="text-xs font-medium">갔던 곳</div>
-                      </div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setStatus("want_to_visit_again")}
-                      className={`p-3 rounded-lg border-2 transition-all ${
-                        status === "want_to_visit_again"
-                          ? "border-blue-400 bg-blue-50"
-                          : "border-border hover:border-blue-300"
-                      }`}
-                    >
-                      <div className="text-center">
-                        <div className="text-xl mb-1">❤️</div>
-                        <div className="text-xs font-medium">
-                          또 가고 싶은 곳
-                        </div>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                  {place.status === "want_to_go" && (
-                    <>
-                      <Calendar className="h-5 w-5 text-blue-500 flex-shrink-0" />
-                      <span className="font-medium">갈 곳</span>
-                    </>
-                  )}
-                  {place.status === "visited" && (
-                    <>
-                      <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
-                      <span className="font-medium">갔던 곳</span>
-                    </>
-                  )}
-                  {place.status === "want_to_visit_again" && (
-                    <>
-                      <Heart className="h-5 w-5 text-blue-500 flex-shrink-0" />
-                      <span className="font-medium">또 가고 싶은 곳</span>
-                    </>
-                  )}
-                </div>
-              )}
-              <div>
-                <Label className="text-base font-semibold">코멘트</Label>
-                {isEditing ? (
-                  <Textarea
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    placeholder="이 장소에 대한 코멘트를 입력하세요..."
-                    className="mt-2 resize-none"
-                    rows={6}
-                  />
-                ) : (
-                  <div className="mt-2 p-4 bg-muted/30 rounded-lg min-h-[120px]">
-                    <p className="text-sm text-foreground whitespace-pre-wrap">
-                      {place.comment || (
-                        <span className="text-muted-foreground italic">
-                          코멘트가 없습니다.
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                )}
+            </div>
+          </div>
+
+          {/* 주소 */}
+          <div className="flex items-start gap-2 text-sm text-gray-600 pt-3 border-t border-gray-100">
+            <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+            <span className="flex-1">{place.address}</span>
+          </div>
+        </div>
+
+        {/* 3. 별점, 메뉴들 */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
+          {/* 별점 */}
+          {place.rating && (
+            <div className="flex items-center gap-2">
+              <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
+              <span className="text-lg font-semibold text-gray-900">
+                {place.rating.toFixed(1)}
+              </span>
+              <span className="text-sm text-gray-500">/ 5.0</span>
+            </div>
+          )}
+
+          {/* 메뉴 정보 (카카오 맵에서 가져온 정보) */}
+          {kakaoDetail?.menu_info && (
+            <div className="pt-4 border-t border-gray-100">
+              <div className="flex items-center gap-2 mb-3">
+                <Utensils className="h-5 w-5 text-gray-400" />
+                <h3 className="font-semibold text-gray-900">메뉴</h3>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Share2 className="h-5 w-5" />
-                장소 공유
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {!showShareForm ? (
-                <Button
-                  variant="outline"
-                  onClick={() => setShowShareForm(true)}
-                  className="w-full"
-                >
-                  <Share2 className="h-4 w-4 mr-2" />
-                  연인/친구와 공유하기
-                </Button>
-              ) : (
-                <form onSubmit={handleShare} className="space-y-3">
-                  <Input
-                    type="email"
-                    placeholder="공유할 이메일 주소"
-                    value={shareEmail}
-                    onChange={(e) => setShareEmail(e.target.value)}
-                    required
-                    className="h-10"
-                  />
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setShowShareForm(false);
-                        setShareEmail("");
-                      }}
-                      className="flex-1"
-                      disabled={sharePlaceMutation.isPending}
-                    >
-                      취소
-                    </Button>
-                    <Button
-                      type="submit"
-                      className="flex-1"
-                      disabled={sharePlaceMutation.isPending}
-                    >
-                      {sharePlaceMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        "공유"
-                      )}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    공유된 장소는 상대방도 확인하고 포스팅을 작성할 수 있습니다.
-                  </p>
-                </form>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-sm border-destructive/20">
-            <CardHeader>
-              <CardTitle className="text-destructive">위험한 작업</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Button
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={deleteMutation.isPending}
-                className="w-full"
-              >
-                {deleteMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Trash2 className="h-4 w-4 mr-2" />
-                )}
-                장소 삭제
-              </Button>
-              <p className="text-xs text-muted-foreground mt-2 text-center">
-                삭제된 장소는 복구할 수 없습니다.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* 포스팅 섹션 */}
-      <div className="mt-8">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-2xl font-bold">방문 기록</h2>
-            <p className="text-muted-foreground text-sm mt-1">
-              함께 갔던 순간들을 기록해보세요
-            </p>
-          </div>
-          {!showPostForm && (
-            <Button onClick={() => setShowPostForm(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              포스팅 작성
-            </Button>
-          )}
-        </div>
-
-        {showPostForm && (
-          <div className="mb-6">
-            <PlacePostForm
-              placeName={place.name}
-              onSubmit={handleCreatePost}
-              onCancel={() => setShowPostForm(false)}
-              isLoading={createPostMutation.isPending}
-            />
-          </div>
-        )}
-
-        {place.posts && place.posts.length > 0 ? (
-          <div className="space-y-6">
-            {place.posts.map((post) => (
-              <PlacePostCard key={post.id} post={post} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12 bg-muted/30 rounded-lg">
-            <p className="text-muted-foreground">
-              아직 작성된 방문 기록이 없습니다.
-            </p>
-            {!showPostForm && (
-              <Button
-                variant="outline"
-                onClick={() => setShowPostForm(true)}
-                className="mt-4"
-              >
-                <Plus className="h-4 w-4 mr-2" />첫 포스팅 작성하기
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* 코멘트 섹션 */}
-      <div className="mt-8">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-2xl font-bold">코멘트</h2>
-            <p className="text-muted-foreground text-sm mt-1">
-              구성원들과 자유롭게 소통해보세요
-            </p>
-          </div>
-          {!showCommentForm && (
-            <Button onClick={() => setShowCommentForm(true)}>
-              <MessageSquare className="h-4 w-4 mr-2" />
-              코멘트 작성
-            </Button>
-          )}
-        </div>
-
-        {showCommentForm && (
-          <div className="mb-6">
-            <PlaceCommentForm
-              placeId={placeId}
-              onSubmit={handleCreateComment}
-              isLoading={createCommentMutation.isPending}
-            />
-          </div>
-        )}
-
-        {place.comments && place.comments.length > 0 ? (
-          <div className="space-y-4">
-            {place.comments.map((comment: PlaceComment) => (
-              <PlaceCommentCard
-                key={comment.id}
-                comment={comment}
-                placeId={placeId}
+              <div
+                className="text-sm text-gray-700 whitespace-pre-line leading-relaxed"
+                dangerouslySetInnerHTML={{
+                  __html: kakaoDetail.menu_info.replace(/\n/g, "<br />"),
+                }}
               />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12 bg-muted/30 rounded-lg">
-            <p className="text-muted-foreground">
-              아직 작성된 코멘트가 없습니다.
-            </p>
+            </div>
+          )}
+
+          {/* 전화번호 */}
+          {kakaoDetail?.phone && (
+            <div className="flex items-center gap-2 text-sm text-gray-700 pt-4 border-t border-gray-100">
+              <Phone className="h-4 w-4 text-gray-400" />
+              <a
+                href={`tel:${kakaoDetail.phone}`}
+                className="hover:text-blue-600 hover:underline"
+              >
+                {kakaoDetail.phone}
+              </a>
+            </div>
+          )}
+
+          {/* 홈페이지 */}
+          {kakaoDetail?.homepage && (
+            <div className="flex items-center gap-2 text-sm text-gray-700 pt-2">
+              <Globe className="h-4 w-4 text-gray-400" />
+              <a
+                href={kakaoDetail.homepage}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline truncate"
+              >
+                홈페이지
+              </a>
+            </div>
+          )}
+
+          {/* 카카오맵 링크 */}
+          {kakaoDetail?.place_url && (
+            <div className="pt-4 border-t border-gray-100">
+              <a
+                href={kakaoDetail.place_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
+              >
+                <MapPin className="h-4 w-4" />
+                카카오맵에서 자세히 보기
+              </a>
+            </div>
+          )}
+        </div>
+
+        {/* 4. 댓글 섹션 */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-gray-900">
+              댓글 {place.comments?.length || 0}
+            </h2>
             {!showCommentForm && (
               <Button
-                variant="outline"
+                size="sm"
                 onClick={() => setShowCommentForm(true)}
-                className="mt-4"
+                className="h-9"
               >
-                <MessageSquare className="h-4 w-4 mr-2" />
-                첫 코멘트 작성하기
+                <MessageSquare className="h-4 w-4 mr-1.5" />
+                댓글 작성
               </Button>
             )}
           </div>
-        )}
+
+          {showCommentForm && (
+            <div className="mb-6">
+              <PlaceCommentForm
+                placeId={placeId}
+                onSubmit={handleCreateComment}
+                isLoading={createCommentMutation.isPending}
+              />
+            </div>
+          )}
+
+          {place.comments && place.comments.length > 0 ? (
+            <div className="space-y-4">
+              {place.comments.map((comment: PlaceComment) => (
+                <PlaceCommentCard
+                  key={comment.id}
+                  comment={comment}
+                  placeId={placeId}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-sm text-gray-500 mb-4">
+                아직 작성된 댓글이 없습니다.
+              </p>
+              {!showCommentForm && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowCommentForm(true)}
+                >
+                  첫 댓글 작성하기
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 5. 방문 기록 섹션 (사진 등록) */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-gray-900">
+              방문 기록 {place.posts?.length || 0}
+            </h2>
+            {!showPostForm && (
+              <Button
+                size="sm"
+                onClick={() => setShowPostForm(true)}
+                className="h-9"
+              >
+                <Plus className="h-4 w-4 mr-1.5" />
+                기록 작성
+              </Button>
+            )}
+          </div>
+
+          {showPostForm && (
+            <div className="mb-6">
+              <PlacePostForm
+                placeName={place.name}
+                onSubmit={handleCreatePost}
+                onCancel={() => setShowPostForm(false)}
+                isLoading={createPostMutation.isPending}
+              />
+            </div>
+          )}
+
+          {place.posts && place.posts.length > 0 ? (
+            <div className="space-y-6">
+              {place.posts.map((post) => (
+                <div
+                  key={post.id}
+                  className="border-t border-gray-100 pt-6 first:border-t-0 first:pt-0"
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-400 to-sky-400 flex items-center justify-center text-white text-sm font-semibold">
+                      {getUserNameBySupabaseId(post.user_id)?.charAt(0) || "?"}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {getUserNameBySupabaseId(post.user_id) || "알 수 없음"}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {format(new Date(post.visited_at), "yyyy년 M월 d일", {
+                          locale: ko,
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                  <h3 className="font-semibold text-gray-900 mb-2">
+                    {post.title}
+                  </h3>
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed mb-3">
+                    {post.content}
+                  </p>
+                  {post.images && post.images.length > 0 && (
+                    <div className="grid grid-cols-2 gap-2 mt-3">
+                      {post.images.map((img) => (
+                        <div
+                          key={img.id}
+                          className="relative aspect-square rounded-lg overflow-hidden bg-gray-100"
+                        >
+                          <Image
+                            src={img.image_url}
+                            alt={post.title}
+                            fill
+                            className="object-cover"
+                            unoptimized
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-sm text-gray-500 mb-4">
+                아직 작성된 방문 기록이 없습니다.
+              </p>
+              {!showPostForm && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowPostForm(true)}
+                >
+                  첫 기록 작성하기
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
