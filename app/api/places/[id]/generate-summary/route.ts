@@ -90,35 +90,74 @@ export async function POST(
       }
     }
 
+    // Gemini API 키 확인
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    if (!geminiApiKey) {
+      console.error("GEMINI_API_KEY 환경 변수가 설정되지 않았습니다.");
+      return NextResponse.json(
+        { 
+          success: false,
+          error: "AI 요약을 생성할 수 없습니다. GEMINI_API_KEY 환경 변수가 설정되지 않았습니다.",
+          details: "서버 환경 변수에 GEMINI_API_KEY를 설정해주세요."
+        },
+        { status: 200 }
+      );
+    }
+
     // Gemini API로 요약 생성
     let aiSummary = "";
     try {
+      console.log("Gemini API 호출 시작:", {
+        placeName: place.name,
+        address: place.address,
+        category: category || "없음",
+        apiKeyExists: !!geminiApiKey,
+      });
+      
       aiSummary = await generatePlaceSummary(
         place.name,
         place.address,
         category
       );
+      
+      console.log("Gemini API 응답:", {
+        hasSummary: !!aiSummary,
+        summaryLength: aiSummary?.length || 0,
+      });
     } catch (error) {
-      console.error("Gemini API 호출 오류:", error);
+      console.error("Gemini API 호출 오류:", {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       return NextResponse.json(
         { 
+          success: false,
           error: "AI 요약 생성 중 오류가 발생했습니다.",
           details: error instanceof Error ? error.message : String(error)
         },
-        { status: 500 }
+        { status: 200 }
       );
     }
 
-    // 요약이 비어있으면 실패로 처리하지 않고 빈 문자열로 저장
-    // (API 키가 없거나 다른 이유로 생성 실패한 경우)
+    // 요약이 비어있으면 실패로 처리
     if (!aiSummary) {
-      console.warn("AI 요약이 생성되지 않았습니다. (API 키 미설정 또는 제한 초과 가능)");
+      console.warn("AI 요약이 생성되지 않았습니다.", {
+        placeName: place.name,
+        apiKeyExists: !!geminiApiKey,
+        possibleReasons: [
+          "API 키가 유효하지 않음",
+          "일일/분당 요청 한도 초과",
+          "Gemini API 서버 오류",
+          "잘못된 요청 형식"
+        ]
+      });
       return NextResponse.json(
         { 
           success: false,
           error: "AI 요약을 생성할 수 없습니다. API 키를 확인하거나 잠시 후 다시 시도해주세요.",
+          details: "서버 콘솔 로그를 확인하여 상세한 오류 정보를 확인하세요."
         },
-        { status: 200 } // 500 대신 200으로 반환하여 클라이언트에서 처리 가능하도록
+        { status: 200 }
       );
     }
 

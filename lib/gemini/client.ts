@@ -79,7 +79,28 @@ ${category ? `- 카테고리: ${category}` : ""}
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Gemini API 오류:", response.status, errorText);
+      console.error("Gemini API 오류:", {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText,
+        apiKeyExists: !!apiKey,
+        apiKeyLength: apiKey?.length || 0,
+      });
+      
+      // 에러 상세 정보 파싱
+      try {
+        const errorData = JSON.parse(errorText);
+        console.error("Gemini API 에러 상세:", errorData);
+        
+        // 특정 에러 메시지 처리
+        if (errorData.error?.message) {
+          console.error("에러 메시지:", errorData.error.message);
+        }
+      } catch (e) {
+        // JSON 파싱 실패 시 원본 텍스트 출력
+        console.error("에러 응답 (텍스트):", errorText);
+      }
+      
       return "";
     }
 
