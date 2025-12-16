@@ -7,6 +7,7 @@ import { User } from "@/lib/auth";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { MapPin, Plus, List, LogOut } from "lucide-react";
+import { Logo } from "@/components/ui/logo";
 
 export default function MainLayout({
   children,
@@ -69,12 +70,7 @@ export default function MainLayout({
       <nav className="hidden md:block border-b border-gray-200 bg-white sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <Link
-              href="/"
-              className="text-xl font-bold text-gray-900 hover:text-blue-600 transition-colors"
-            >
-              Want2Eat
-            </Link>
+            <Logo size="md" />
             <div className="flex items-center gap-4">
               {user && (
                 <div className="px-3 py-1.5 rounded-full bg-gray-100">
@@ -133,12 +129,7 @@ export default function MainLayout({
       <nav className="md:hidden border-b border-white/20 glass sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <Link
-              href="/"
-              className="text-lg font-bold text-gray-900"
-            >
-              Want2Eat
-            </Link>
+            <Logo size="sm" />
             {user && (
               <div className="px-3 py-1.5 rounded-full bg-gray-100">
                 <span className="text-xs font-medium text-gray-700">

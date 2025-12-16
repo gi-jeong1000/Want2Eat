@@ -131,13 +131,8 @@ export interface KakaoPlaceDetail {
   x: string;
   y: string;
   place_url: string;
-  // 음식점 정보
-  menu_info?: string;
-  // 운영 시간
-  open_hour?: string;
-  // 기타 정보
-  homepage?: string;
-  // 별점 (카카오맵에서 제공하는 경우)
-  rating?: number;
+  // 카카오맵에서 추가 정보 확인 가능 여부
+  has_kakao_map_info?: boolean;
+  // 카카오 로컬 API 응답의 모든 필드 포함
+  [key: string]: any;
 }
-

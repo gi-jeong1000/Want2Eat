@@ -24,6 +24,7 @@ export async function GET(
     }
 
     // 카카오 로컬 API - 장소 상세 정보 조회
+    // placeId는 장소 이름 또는 ID일 수 있음
     const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(placeId)}&size=1`;
 
     const response = await fetch(url, {
@@ -56,9 +57,17 @@ export async function GET(
 
     const data = await response.json();
     
-    // 첫 번째 결과 반환
+    // 첫 번째 결과 반환 (모든 필드 포함)
     if (data.documents && data.documents.length > 0) {
-      return NextResponse.json(data.documents[0]);
+      const place = data.documents[0];
+      
+      // 카카오 로컬 API 응답에는 이미지나 메뉴 정보가 직접 포함되지 않지만,
+      // place_url을 통해 카카오맵에서 확인할 수 있음
+      return NextResponse.json({
+        ...place,
+        // 카카오맵에서 이미지와 메뉴를 볼 수 있음을 명시
+        has_kakao_map_info: !!place.place_url,
+      });
     }
 
     return NextResponse.json(

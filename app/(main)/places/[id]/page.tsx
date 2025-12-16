@@ -32,7 +32,6 @@ import { PlaceStatus, PlaceComment } from "@/types";
 import { PlaceCommentCard } from "@/components/places/PlaceCommentCard";
 import { PlaceCommentForm } from "@/components/places/PlaceCommentForm";
 import { PlacePostForm } from "@/components/places/PlacePostForm";
-import { getUserNameBySupabaseId } from "@/lib/get-user-name";
 import { getPlaceDetail } from "@/lib/kakao/place";
 
 export default function PlaceDetailPage() {
@@ -43,6 +42,7 @@ export default function PlaceDetailPage() {
   const [showCommentForm, setShowCommentForm] = useState(false);
   const [showPostForm, setShowPostForm] = useState(false);
   const [kakaoDetail, setKakaoDetail] = useState<any>(null);
+  const [userNames, setUserNames] = useState<Record<string, string>>({});
 
   // params.id를 안전하게 처리
   const placeId = typeof params.id === "string" ? params.id : params.id?.[0];
@@ -85,6 +85,48 @@ export default function PlaceDetailPage() {
         .catch((err) => console.error("카카오 상세 정보 조회 실패:", err));
     }
   }, [place?.naver_place_id]);
+
+  // 사용자 이름 가져오기
+  useEffect(() => {
+    if (!place) return;
+
+    const fetchUserNames = async () => {
+      const userIds = new Set<string>();
+      if (place.user_id) userIds.add(place.user_id);
+      if (place.posts) {
+        place.posts.forEach((post) => {
+          if (post.user_id) userIds.add(post.user_id);
+        });
+      }
+      if (place.comments) {
+        place.comments.forEach((comment) => {
+          if (comment.user_id) userIds.add(comment.user_id);
+        });
+      }
+
+      const namePromises = Array.from(userIds).map(async (userId) => {
+        try {
+          const response = await fetch(`/api/users/${userId}`);
+          if (response.ok) {
+            const data = await response.json();
+            return { userId, name: data.name };
+          }
+        } catch (err) {
+          console.error(`사용자 ${userId} 이름 조회 실패:`, err);
+        }
+        return { userId, name: "알 수 없음" };
+      });
+
+      const results = await Promise.all(namePromises);
+      const nameMap: Record<string, string> = {};
+      results.forEach(({ userId, name }) => {
+        nameMap[userId] = name;
+      });
+      setUserNames(nameMap);
+    };
+
+    fetchUserNames();
+  }, [place]);
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
@@ -314,19 +356,25 @@ export default function PlaceDetailPage() {
               unoptimized
             />
           ) : kakaoDetail?.place_url ? (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-sky-50">
-              <div className="text-center">
-                <MapPin className="h-16 w-16 text-blue-300 mx-auto mb-3" />
-                <p className="text-sm text-gray-500">사진 없음</p>
-                <a
-                  href={kakaoDetail.place_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-blue-500 hover:underline mt-2 inline-block"
-                >
-                  카카오맵에서 보기
-                </a>
+            <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-sky-50 p-8">
+              <div className="relative mb-4">
+                <div className="absolute inset-0 bg-blue-200 rounded-full blur-2xl opacity-30" />
+                <div className="relative bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-lg">
+                  <Utensils className="h-16 w-16 text-blue-400" />
+                </div>
               </div>
+              <p className="text-sm font-medium text-gray-600 mb-2">
+                {place.name}
+              </p>
+              <a
+                href={kakaoDetail.place_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs text-blue-500 hover:text-blue-600 hover:underline transition-colors font-medium"
+              >
+                <MapPin className="h-3.5 w-3.5" />
+                카카오맵에서 사진과 메뉴 보기
+              </a>
             </div>
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-sky-50">
@@ -346,7 +394,7 @@ export default function PlaceDetailPage() {
                 {getStatusTag()}
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-gray-50 text-gray-700 border border-gray-200">
                   <User className="h-3.5 w-3.5" />
-                  {getUserNameBySupabaseId(place.user_id) || "알 수 없음"}
+                  {userNames[place.user_id] || "로딩 중..."}
                 </span>
                 {isOwner && (
                   <Button
@@ -387,19 +435,12 @@ export default function PlaceDetailPage() {
             </div>
           )}
 
-          {/* 메뉴 정보 (카카오 맵에서 가져온 정보) */}
-          {kakaoDetail?.menu_info && (
-            <div className="pt-4 border-t border-gray-100">
-              <div className="flex items-center gap-2 mb-3">
-                <Utensils className="h-5 w-5 text-gray-400" />
-                <h3 className="font-semibold text-gray-900">메뉴</h3>
-              </div>
-              <div
-                className="text-sm text-gray-700 whitespace-pre-line leading-relaxed"
-                dangerouslySetInnerHTML={{
-                  __html: kakaoDetail.menu_info.replace(/\n/g, "<br />"),
-                }}
-              />
+          {/* 카테고리 정보 */}
+          {kakaoDetail?.category_name && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <span className="px-2 py-1 bg-gray-100 rounded-md text-xs font-medium">
+                {kakaoDetail.category_name}
+              </span>
             </div>
           )}
 
@@ -431,18 +472,47 @@ export default function PlaceDetailPage() {
             </div>
           )}
 
-          {/* 카카오맵 링크 */}
+          {/* 카카오맵 링크 - 사진과 메뉴 정보 확인 */}
           {kakaoDetail?.place_url && (
             <div className="pt-4 border-t border-gray-100">
-              <a
-                href={kakaoDetail.place_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
-              >
-                <MapPin className="h-4 w-4" />
-                카카오맵에서 자세히 보기
-              </a>
+              <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0">
+                    <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
+                      <MapPin className="h-5 w-5 text-white" />
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-gray-900 mb-1 text-sm">
+                      카카오맵에서 더 보기
+                    </h4>
+                    <p className="text-xs text-gray-600 mb-3">
+                      사진, 메뉴, 리뷰 등 상세 정보를 카카오맵에서 확인하세요
+                    </p>
+                    <a
+                      href={kakaoDetail.place_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      카카오맵에서 보기
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                        />
+                      </svg>
+                    </a>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -482,6 +552,7 @@ export default function PlaceDetailPage() {
                   key={comment.id}
                   comment={comment}
                   placeId={placeId}
+                  userName={userNames[comment.user_id]}
                 />
               ))}
             </div>
@@ -542,11 +613,11 @@ export default function PlaceDetailPage() {
                 >
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-400 to-sky-400 flex items-center justify-center text-white text-sm font-semibold">
-                      {getUserNameBySupabaseId(post.user_id)?.charAt(0) || "?"}
+                      {userNames[post.user_id]?.charAt(0) || "?"}
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-gray-900">
-                        {getUserNameBySupabaseId(post.user_id) || "알 수 없음"}
+                        {userNames[post.user_id] || "로딩 중..."}
                       </p>
                       <p className="text-xs text-gray-500">
                         {format(new Date(post.visited_at), "yyyy년 M월 d일", {

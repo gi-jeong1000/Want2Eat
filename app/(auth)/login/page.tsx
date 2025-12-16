@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Logo } from "@/components/ui/logo";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -61,10 +62,10 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-sky-50 to-cyan-50 p-4">
       <Card className="w-full max-w-md shadow-soft-lg border-sky-100/50">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-3xl font-bold text-center gradient-text">
-            Want2Eat
-          </CardTitle>
+        <CardHeader className="space-y-4">
+          <div className="flex justify-center">
+            <Logo size="lg" />
+          </div>
           <CardDescription className="text-center text-base">
             가고 싶은 장소를 함께 기록하세요
           </CardDescription>

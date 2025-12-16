@@ -3,7 +3,6 @@
 import { PlaceComment } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { getUserNameBySupabaseId } from "@/lib/get-user-name";
 import { getSupabaseUserId } from "@/lib/get-user-id";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale/ko";
@@ -15,9 +14,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 interface PlaceCommentCardProps {
   comment: PlaceComment;
   placeId: string;
+  userName?: string;
 }
 
-export function PlaceCommentCard({ comment, placeId }: PlaceCommentCardProps) {
+export function PlaceCommentCard({ comment, placeId, userName }: PlaceCommentCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
   const queryClient = useQueryClient();
@@ -88,11 +88,11 @@ export function PlaceCommentCard({ comment, placeId }: PlaceCommentCardProps) {
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-full bg-gradient-to-r from-sky-400 to-blue-400 flex items-center justify-center text-white font-bold text-sm">
-                {getUserNameBySupabaseId(comment.user_id)?.charAt(0) || "?"}
+                {userName?.charAt(0) || "?"}
               </div>
               <div>
                 <span className="font-bold text-sm text-foreground block">
-                  {getUserNameBySupabaseId(comment.user_id) || "알 수 없음"}
+                  {userName || "로딩 중..."}
                 </span>
                 <span className="text-xs text-muted-foreground">
                   {format(new Date(comment.created_at), "yyyy년 M월 d일 HH:mm", {
