@@ -24,6 +24,7 @@ import {
   Phone,
   Globe,
   Sparkles,
+  RefreshCw,
 } from "lucide-react";
 import Image from "next/image";
 import { useState, useEffect } from "react";
@@ -321,6 +322,37 @@ export default function PlaceDetailPage() {
     }
   };
 
+  // AI 요약 재생성 mutation
+  const regenerateSummaryMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/places/${placeId}/generate-summary`, {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "AI 요약 재생성에 실패했습니다.");
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      // 요약 재생성 성공 시 쿼리 무효화하여 다시 조회
+      queryClient.invalidateQueries({ queryKey: ["place", placeId] });
+      setAiSummaryStatus("idle");
+    },
+    onError: (error: any) => {
+      console.error("AI 요약 재생성 실패:", error);
+      setAiSummaryStatus("failed");
+    },
+  });
+
+  const handleRegenerateSummary = () => {
+    setAiSummaryStatus("generating");
+    regenerateSummaryMutation.mutate();
+  };
+
   const currentUserId = getSupabaseUserId();
   const isOwner = place && currentUserId === place.user_id;
 
@@ -566,9 +598,30 @@ export default function PlaceDetailPage() {
 
         {/* 4. AI 요약 섹션 */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">
-            이곳의 평가는?
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-gray-900">
+              이곳의 평가는?
+            </h2>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleRegenerateSummary}
+              disabled={regenerateSummaryMutation.isPending || aiSummaryStatus === "generating"}
+              className="h-8 px-3 text-xs"
+            >
+              {regenerateSummaryMutation.isPending || aiSummaryStatus === "generating" ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  생성 중...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                  재생성
+                </>
+              )}
+            </Button>
+          </div>
           
           {/* 요약이 있는 경우 */}
           {place.ai_summary && (
