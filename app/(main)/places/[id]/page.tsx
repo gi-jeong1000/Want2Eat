@@ -362,36 +362,36 @@ export default function PlaceDetailPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-5xl">
-      <div className="mb-6">
+    <div className="container mx-auto px-4 py-8 max-w-5xl animate-fade-in">
+      <div className="mb-8">
         <Button
           variant="ghost"
           onClick={() => router.back()}
-          className="mb-4 -ml-2"
+          className="mb-6 -ml-2 rounded-xl hover:bg-sky-100/80"
         >
           ← 뒤로가기
         </Button>
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">{place.name}</h1>
+        <div className="flex items-start justify-between gap-4 mb-6">
+          <div className="flex-1">
+            <h1 className="text-4xl font-bold mb-3 gradient-text">{place.name}</h1>
             <div className="flex items-center gap-2 text-muted-foreground">
-              <MapPin className="h-4 w-4" />
-              <span className="text-sm">{place.address}</span>
+              <MapPin className="h-5 w-5 text-sky-500" />
+              <span className="text-base">{place.address}</span>
             </div>
           </div>
           {place.status === "want_to_go" && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-sky-50 text-sky-700 rounded-full text-sm font-medium">
               <Calendar className="h-4 w-4" />갈 곳
             </div>
           )}
           {place.status === "visited" && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 text-green-700 rounded-full text-sm font-medium">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-cyan-50 text-cyan-700 rounded-full text-sm font-medium">
               <CheckCircle2 className="h-4 w-4" />
               갔던 곳
             </div>
           )}
           {place.status === "want_to_visit_again" && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-pink-50 text-pink-700 rounded-full text-sm font-medium">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">
               <Heart className="h-4 w-4" />또 가고 싶은 곳
             </div>
           )}
@@ -431,28 +431,28 @@ export default function PlaceDetailPage() {
             </Card>
           )}
 
-          <Card className="shadow-sm">
+          <Card className="shadow-soft border-sky-100/50">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <MapPin className="h-5 w-5" />
+                <MapPin className="h-5 w-5 text-sky-500" />
                 위치 정보
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex items-start text-sm">
-                <MapPin className="h-4 w-4 mr-2 text-muted-foreground mt-0.5 flex-shrink-0" />
+                <MapPin className="h-4 w-4 mr-2 text-sky-500 mt-0.5 flex-shrink-0" />
                 <span className="break-words">{place.address}</span>
               </div>
               {place.rating && (
-                <div className="flex items-center text-sm pt-2 border-t">
-                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 mr-2" />
+                <div className="flex items-center text-sm pt-2 border-t border-sky-100">
+                  <Star className="h-4 w-4 fill-amber-400 text-amber-400 mr-2" />
                   <span className="font-medium">
                     네이버 별점: {place.rating.toFixed(1)}
                   </span>
                 </div>
               )}
-              <div className="flex items-center gap-1.5 text-sm pt-2 border-t">
-                <User className="h-4 w-4 text-muted-foreground" />
+              <div className="flex items-center gap-1.5 text-sm pt-2 border-t border-sky-100">
+                <User className="h-4 w-4 text-sky-500" />
                 <span className="text-muted-foreground">
                   저장한 사람: {getUserNameBySupabaseId(place.user_id) || "알 수 없음"}
                 </span>
@@ -542,8 +542,8 @@ export default function PlaceDetailPage() {
                       onClick={() => setStatus("want_to_visit_again")}
                       className={`p-3 rounded-lg border-2 transition-all ${
                         status === "want_to_visit_again"
-                          ? "border-pink-500 bg-pink-50"
-                          : "border-border hover:border-pink-300"
+                          ? "border-blue-400 bg-blue-50"
+                          : "border-border hover:border-blue-300"
                       }`}
                     >
                       <div className="text-center">
@@ -571,7 +571,7 @@ export default function PlaceDetailPage() {
                   )}
                   {place.status === "want_to_visit_again" && (
                     <>
-                      <Heart className="h-5 w-5 text-pink-500 flex-shrink-0" />
+                      <Heart className="h-5 w-5 text-blue-500 flex-shrink-0" />
                       <span className="font-medium">또 가고 싶은 곳</span>
                     </>
                   )}

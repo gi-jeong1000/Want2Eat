@@ -64,22 +64,24 @@ export default function MainLayout({
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen flex flex-col">
       {/* 데스크톱: 상단 네비게이션 */}
-      <nav className="hidden md:block border-b bg-card sticky top-0 z-50 backdrop-blur-sm bg-card/95">
-        <div className="container mx-auto px-4 py-3">
+      <nav className="hidden md:block border-b border-white/20 glass sticky top-0 z-50">
+        <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <Link
               href="/"
-              className="text-xl font-bold text-primary hover:opacity-80 transition-opacity"
+              className="text-2xl font-bold gradient-text hover:scale-105 transition-transform duration-300"
             >
               Want2Eat
             </Link>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               {user && (
-                <span className="text-sm text-muted-foreground">
-                  {user.name}님
-                </span>
+                <div className="px-4 py-2 rounded-full bg-gradient-to-r from-sky-100 to-blue-100 border border-sky-200/50">
+                  <span className="text-sm font-semibold text-sky-700">
+                    {user.name}님
+                  </span>
+                </div>
               )}
               <div className="flex items-center gap-2">
                 <Link href="/">
@@ -87,9 +89,9 @@ export default function MainLayout({
                     variant="ghost"
                     size="icon"
                     title="지도 보기"
-                    className="hover:bg-accent"
+                    className="hover:bg-sky-100/80 rounded-xl"
                   >
-                    <MapPin className="h-5 w-5" />
+                    <MapPin className="h-5 w-5 text-sky-600" />
                   </Button>
                 </Link>
                 <Link href="/places">
@@ -97,9 +99,9 @@ export default function MainLayout({
                     variant="ghost"
                     size="icon"
                     title="장소 목록"
-                    className="hover:bg-accent"
+                    className="hover:bg-sky-100/80 rounded-xl"
                   >
-                    <List className="h-5 w-5" />
+                    <List className="h-5 w-5 text-sky-600" />
                   </Button>
                 </Link>
                 <Link href="/add">
@@ -107,9 +109,9 @@ export default function MainLayout({
                     variant="ghost"
                     size="icon"
                     title="장소 추가"
-                    className="hover:bg-accent"
+                    className="hover:bg-sky-100/80 rounded-xl"
                   >
-                    <Plus className="h-5 w-5" />
+                    <Plus className="h-5 w-5 text-sky-600" />
                   </Button>
                 </Link>
                 <Button
@@ -117,9 +119,9 @@ export default function MainLayout({
                   size="icon"
                   onClick={handleLogout}
                   title="로그아웃"
-                  className="hover:bg-accent"
+                  className="hover:bg-red-100/80 rounded-xl"
                 >
-                  <LogOut className="h-5 w-5" />
+                  <LogOut className="h-5 w-5 text-red-500" />
                 </Button>
               </div>
             </div>
@@ -128,19 +130,21 @@ export default function MainLayout({
       </nav>
 
       {/* 모바일: 상단 헤더 (제목만) */}
-      <nav className="md:hidden border-b bg-card sticky top-0 z-50 backdrop-blur-sm bg-card/95">
+      <nav className="md:hidden border-b border-white/20 glass sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <Link
               href="/"
-              className="text-lg font-bold text-primary hover:opacity-80 transition-opacity"
+              className="text-xl font-bold gradient-text"
             >
               Want2Eat
             </Link>
             {user && (
-              <span className="text-xs text-muted-foreground">
-                {user.name}님
-              </span>
+              <div className="px-3 py-1.5 rounded-full bg-gradient-to-r from-sky-100 to-blue-100 border border-sky-200/50">
+                <span className="text-xs font-semibold text-sky-700">
+                  {user.name}님
+                </span>
+              </div>
             )}
           </div>
         </div>
@@ -150,49 +154,49 @@ export default function MainLayout({
 
       {/* 모바일: 하단 네비게이션 */}
       <nav 
-        className="md:hidden fixed bottom-0 left-0 right-0 border-t bg-card z-50 backdrop-blur-sm bg-card/95"
+        className="md:hidden fixed bottom-0 left-0 right-0 border-t border-white/20 glass z-50"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="container mx-auto px-2 py-2">
+        <div className="container mx-auto px-2 py-3">
           <div className="flex items-center justify-around">
             <Link href="/" className="flex-1">
               <Button
                 variant="ghost"
-                className="w-full flex flex-col items-center gap-1 h-auto py-2"
+                className="w-full flex flex-col items-center gap-1 h-auto py-2 rounded-xl hover:bg-sky-100/80"
                 title="지도 보기"
               >
-                <MapPin className="h-5 w-5" />
-                <span className="text-xs">지도</span>
+                <MapPin className="h-5 w-5 text-sky-600" />
+                <span className="text-xs font-medium text-sky-700">지도</span>
               </Button>
             </Link>
             <Link href="/places" className="flex-1">
               <Button
                 variant="ghost"
-                className="w-full flex flex-col items-center gap-1 h-auto py-2"
+                className="w-full flex flex-col items-center gap-1 h-auto py-2 rounded-xl hover:bg-sky-100/80"
                 title="장소 목록"
               >
-                <List className="h-5 w-5" />
-                <span className="text-xs">목록</span>
+                <List className="h-5 w-5 text-sky-600" />
+                <span className="text-xs font-medium text-sky-700">목록</span>
               </Button>
             </Link>
             <Link href="/add" className="flex-1">
               <Button
                 variant="ghost"
-                className="w-full flex flex-col items-center gap-1 h-auto py-2"
+                className="w-full flex flex-col items-center gap-1 h-auto py-2 rounded-xl hover:bg-sky-100/80"
                 title="장소 추가"
               >
-                <Plus className="h-5 w-5" />
-                <span className="text-xs">추가</span>
+                <Plus className="h-5 w-5 text-sky-600" />
+                <span className="text-xs font-medium text-sky-700">추가</span>
               </Button>
             </Link>
             <Button
               variant="ghost"
-              className="flex-1 flex flex-col items-center gap-1 h-auto py-2"
+              className="flex-1 flex flex-col items-center gap-1 h-auto py-2 rounded-xl hover:bg-red-100/80"
               onClick={handleLogout}
               title="로그아웃"
             >
-              <LogOut className="h-5 w-5" />
-              <span className="text-xs">로그아웃</span>
+              <LogOut className="h-5 w-5 text-red-600" />
+              <span className="text-xs font-medium text-red-700">로그아웃</span>
             </Button>
           </div>
         </div>

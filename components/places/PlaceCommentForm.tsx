@@ -30,24 +30,30 @@ export function PlaceCommentForm({
   };
 
   return (
-    <Card className="shadow-sm">
+    <Card className="shadow-soft-lg border-sky-100/50 bg-gradient-to-br from-sky-50/50 to-blue-50/50">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <MessageSquare className="h-5 w-5" />
+        <CardTitle className="flex items-center gap-3 text-xl">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-r from-sky-400 to-blue-400 flex items-center justify-center">
+            <MessageSquare className="h-5 w-5 text-white" />
+          </div>
           코멘트 작성
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <Textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="이 장소에 대한 코멘트를 남겨보세요..."
-            className="min-h-[100px] resize-none"
+            className="min-h-[120px]"
             disabled={isLoading}
           />
           <div className="flex justify-end">
-            <Button type="submit" disabled={isLoading || !content.trim()}>
+            <Button 
+              type="submit" 
+              disabled={isLoading || !content.trim()}
+              className="rounded-xl"
+            >
               <Send className="h-4 w-4 mr-2" />
               {isLoading ? "작성 중..." : "작성하기"}
             </Button>

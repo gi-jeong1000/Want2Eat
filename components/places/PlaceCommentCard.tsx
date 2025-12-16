@@ -82,26 +82,31 @@ export function PlaceCommentCard({ comment, placeId }: PlaceCommentCardProps) {
   };
 
   return (
-    <Card className="shadow-sm">
-      <CardContent className="p-4">
+    <Card className="shadow-soft border-sky-100/50 hover-lift">
+      <CardContent className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="font-semibold text-sm">
-                {getUserNameBySupabaseId(comment.user_id) || "알 수 없음"}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                {format(new Date(comment.created_at), "yyyy년 M월 d일 HH:mm", {
-                  locale: ko,
-                })}
-              </span>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-r from-sky-400 to-blue-400 flex items-center justify-center text-white font-bold text-sm">
+                {getUserNameBySupabaseId(comment.user_id)?.charAt(0) || "?"}
+              </div>
+              <div>
+                <span className="font-bold text-sm text-foreground block">
+                  {getUserNameBySupabaseId(comment.user_id) || "알 수 없음"}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {format(new Date(comment.created_at), "yyyy년 M월 d일 HH:mm", {
+                    locale: ko,
+                  })}
+                </span>
+              </div>
             </div>
             {isEditing ? (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Textarea
                   value={editContent}
                   onChange={(e) => setEditContent(e.target.value)}
-                  className="min-h-[80px] resize-none"
+                  className="min-h-[100px]"
                   disabled={updateMutation.isPending}
                 />
                 <div className="flex gap-2">
@@ -109,8 +114,9 @@ export function PlaceCommentCard({ comment, placeId }: PlaceCommentCardProps) {
                     size="sm"
                     onClick={handleUpdate}
                     disabled={updateMutation.isPending}
+                    className="rounded-xl"
                   >
-                    <Check className="h-3 w-3 mr-1" />
+                    <Check className="h-4 w-4 mr-1" />
                     저장
                   </Button>
                   <Button
@@ -121,14 +127,15 @@ export function PlaceCommentCard({ comment, placeId }: PlaceCommentCardProps) {
                       setEditContent(comment.content);
                     }}
                     disabled={updateMutation.isPending}
+                    className="rounded-xl"
                   >
-                    <X className="h-3 w-3 mr-1" />
+                    <X className="h-4 w-4 mr-1" />
                     취소
                   </Button>
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-foreground whitespace-pre-wrap">
+              <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed pl-14">
                 {comment.content}
               </p>
             )}
@@ -136,21 +143,21 @@ export function PlaceCommentCard({ comment, placeId }: PlaceCommentCardProps) {
           {isOwner && !isEditing && (
             <div className="flex gap-1">
               <Button
-                size="sm"
+                size="icon"
                 variant="ghost"
                 onClick={() => setIsEditing(true)}
-                className="h-8 w-8 p-0"
+                className="h-9 w-9 rounded-xl hover:bg-sky-100/80"
               >
-                <Edit2 className="h-3 w-3" />
+                <Edit2 className="h-4 w-4 text-sky-600" />
               </Button>
               <Button
-                size="sm"
+                size="icon"
                 variant="ghost"
                 onClick={handleDelete}
                 disabled={deleteMutation.isPending}
-                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                className="h-9 w-9 rounded-xl hover:bg-red-100/80"
               >
-                <Trash2 className="h-3 w-3" />
+                <Trash2 className="h-4 w-4 text-red-500" />
               </Button>
             </div>
           )}
