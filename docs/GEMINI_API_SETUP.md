@@ -29,14 +29,18 @@ GEMINI_API_KEY=your_gemini_api_key_here
 
 ## 3. 사용 모델
 
-이 프로젝트는 **gemini-1.5-flash** 모델을 사용합니다:
+이 프로젝트는 **gemini-2.5-flash** 모델을 사용합니다:
 - 빠른 응답 속도
 - 무료 티어 지원
 - 텍스트 생성에 최적화
+- 최신 Gemini 2.5 시리즈
 
 다른 모델을 사용하려면 `lib/gemini/client.ts`에서 `modelName` 변수를 변경하세요:
-- `gemini-1.5-flash` (기본값, 추천)
-- `gemini-1.5-pro` (더 강력하지만 느림)
+- `gemini-2.5-flash` (기본값, 추천)
+- `gemini-2.5-pro` (더 강력하지만 느림)
+- `gemini-2.5-flash-lite` (더 가벼운 버전)
+
+최신 모델 목록은 [Gemini API 문서](https://ai.google.dev/gemini-api/docs/models)를 참조하세요.
 
 ## 4. 무료 티어 제한
 

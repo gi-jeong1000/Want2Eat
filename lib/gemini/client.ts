@@ -2,8 +2,10 @@
  * Google Gemini API 클라이언트
  * 무료 티어 사용 (15 RPM, 1500 RPD)
  * 
- * 사용 모델: gemini-1.5-flash (빠르고 무료 티어에 적합)
- * 대안: gemini-1.5-pro (더 강력하지만 느림)
+ * 사용 모델: gemini-2.5-flash (최신 모델, 빠르고 무료 티어에 적합)
+ * 대안: gemini-2.5-pro (더 강력하지만 느림)
+ * 
+ * 참고: 최신 모델 목록은 https://ai.google.dev/gemini-api/docs/models 참조
  */
 
 interface GeminiResponse {
@@ -53,14 +55,15 @@ ${category ? `- 카테고리: ${category}` : ""}
 한줄평: 신선한 재료와 정성스러운 요리로 유명한 곳으로, 분위기 좋은 데이트 코스로 추천합니다.
 추천 메뉴: 특제 스테이크, 시그니처 파스타`;
 
-    // 최신 Gemini API 모델 사용 (gemini-1.5-flash는 빠르고 무료 티어에 적합)
-    const modelName = "gemini-1.5-flash";
+    // 최신 Gemini API 모델 사용 (gemini-2.5-flash는 빠르고 무료 티어에 적합)
+    const modelName = "gemini-2.5-flash";
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
     
     const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "x-goog-api-key": apiKey, // 헤더에도 API 키 포함 (권장 방식)
       },
       body: JSON.stringify({
         contents: [

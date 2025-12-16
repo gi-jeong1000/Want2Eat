@@ -108,10 +108,13 @@ echo $GEMINI_API_KEY
 
 ```javascript
 fetch(
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=YOUR_API_KEY",
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=YOUR_API_KEY",
   {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": "YOUR_API_KEY", // 헤더에도 포함 (권장)
+    },
     body: JSON.stringify({
       contents: [{ parts: [{ text: "안녕하세요" }] }],
     }),
