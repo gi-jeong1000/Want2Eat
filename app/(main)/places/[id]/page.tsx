@@ -44,6 +44,7 @@ export default function PlaceDetailPage() {
   const [showPostForm, setShowPostForm] = useState(false);
   const [kakaoDetail, setKakaoDetail] = useState<any>(null);
   const [userNames, setUserNames] = useState<Record<string, string>>({});
+  const [aiSummaryStatus, setAiSummaryStatus] = useState<"idle" | "generating" | "failed">("idle");
 
   // params.id를 안전하게 처리
   const placeId = typeof params.id === "string" ? params.id : params.id?.[0];
@@ -80,34 +81,57 @@ export default function PlaceDetailPage() {
 
   // 카카오 맵 상세 정보 가져오기
   useEffect(() => {
-    if (place?.naver_place_id) {
-      getPlaceDetail(place.naver_place_id)
-        .then((detail) => setKakaoDetail(detail))
-        .catch((err) => console.error("카카오 상세 정보 조회 실패:", err));
+    if (place?.naver_place_id && place?.name) {
+      // 장소 이름으로 검색 (ID로는 직접 조회 불가)
+      getPlaceDetail(place.name)
+        .then((detail) => {
+          // 검색 결과가 있고, 주소가 일치하는 경우에만 설정
+          if (detail && detail.place_name) {
+            setKakaoDetail(detail);
+          }
+        })
+        .catch((err) => {
+          // 에러는 조용히 처리 (카카오 맵 정보는 선택사항)
+          console.warn("카카오 상세 정보 조회 실패:", err.message || err);
+        });
     }
-  }, [place?.naver_place_id]);
+  }, [place?.naver_place_id, place?.name]);
 
   // AI 요약이 없으면 자동으로 생성 요청
   useEffect(() => {
-    if (place && !place.ai_summary && placeId) {
-      // 비동기로 AI 요약 생성 요청 (응답을 기다리지 않음)
+    if (place && !place.ai_summary && placeId && aiSummaryStatus === "idle") {
+      setAiSummaryStatus("generating");
+      
+      // 비동기로 AI 요약 생성 요청
       fetch(`/api/places/${placeId}/generate-summary`, {
         method: "POST",
         credentials: "include",
       })
-        .then((response) => {
+        .then(async (response) => {
           if (response.ok) {
-            // 요약 생성 성공 시 쿼리 무효화하여 다시 조회
-            setTimeout(() => {
-              queryClient.invalidateQueries({ queryKey: ["place", placeId] });
-            }, 2000); // 2초 후 다시 조회
+            const data = await response.json();
+            if (data.success && data.ai_summary) {
+              // 요약 생성 성공 시 쿼리 무효화하여 다시 조회
+              setTimeout(() => {
+                queryClient.invalidateQueries({ queryKey: ["place", placeId] });
+                setAiSummaryStatus("idle");
+              }, 1000);
+            } else {
+              setAiSummaryStatus("failed");
+            }
+          } else {
+            setAiSummaryStatus("failed");
           }
         })
         .catch((err) => {
           console.error("AI 요약 생성 요청 실패:", err);
+          setAiSummaryStatus("failed");
         });
+    } else if (place?.ai_summary) {
+      // 요약이 이미 있으면 상태 초기화
+      setAiSummaryStatus("idle");
     }
-  }, [place, placeId, queryClient]);
+  }, [place, placeId, queryClient, aiSummaryStatus]);
 
   // 사용자 이름 가져오기
   useEffect(() => {
@@ -540,7 +564,82 @@ export default function PlaceDetailPage() {
           )}
         </div>
 
-        {/* 4. 댓글 섹션 */}
+        {/* 4. AI 요약 섹션 */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <h2 className="text-lg font-bold text-gray-900 mb-4">
+            이곳의 평가는?
+          </h2>
+          
+          {/* 요약이 있는 경우 */}
+          {place.ai_summary && (
+            <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-sky-50 border border-blue-100">
+              <div className="flex items-start gap-2">
+                <Sparkles className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+                    {place.ai_summary}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 요약 생성 중 */}
+          {!place.ai_summary && aiSummaryStatus === "generating" && (
+            <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-sky-50 border border-blue-100">
+              <div className="flex items-center gap-3">
+                <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
+                <p className="text-sm text-gray-600">
+                  AI가 이곳에 대한 평가를 생성하고 있습니다...
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* 요약 생성 실패 */}
+          {!place.ai_summary && aiSummaryStatus === "failed" && (
+            <div className="p-4 rounded-xl bg-red-50 border border-red-100">
+              <div className="flex items-start gap-3">
+                <div className="h-4 w-4 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-white text-xs font-bold">!</span>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm text-red-700 font-medium mb-1">
+                    평가 생성에 실패했습니다
+                  </p>
+                  <p className="text-xs text-red-600">
+                    잠시 후 다시 시도해주세요.
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setAiSummaryStatus("idle");
+                      queryClient.invalidateQueries({ queryKey: ["place", placeId] });
+                    }}
+                    className="mt-2 h-7 text-xs"
+                  >
+                    다시 시도
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 요약이 없고 아직 요청하지 않은 경우 */}
+          {!place.ai_summary && aiSummaryStatus === "idle" && (
+            <div className="p-4 rounded-xl bg-gray-50 border border-gray-200">
+              <div className="flex items-center gap-3">
+                <Sparkles className="h-4 w-4 text-gray-400" />
+                <p className="text-sm text-gray-500">
+                  평가를 생성하는 중...
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 5. 댓글 섹션 */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-gray-900">

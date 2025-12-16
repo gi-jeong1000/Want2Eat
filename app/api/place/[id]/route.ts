@@ -23,9 +23,9 @@ export async function GET(
       );
     }
 
-    // 카카오 로컬 API - 장소 상세 정보 조회
-    // placeId는 장소 이름 또는 ID일 수 있음
-    const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(placeId)}&size=1`;
+    // 카카오 로컬 API - 키워드 검색으로 장소 정보 조회
+    // placeId는 장소 이름으로 전달됨
+    const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(placeId)}&size=5`;
 
     const response = await fetch(url, {
       headers: {
@@ -37,27 +37,19 @@ export async function GET(
       const errorText = await response.text();
       console.error("카카오 장소 상세 API 오류:", response.status, errorText);
       
-      let errorMessage = "카카오 장소 상세 정보 조회에 실패했습니다.";
-      try {
-        const errorData = JSON.parse(errorText);
-        errorMessage = errorData.message || errorMessage;
-      } catch {
-        errorMessage = errorText || errorMessage;
-      }
-
+      // 404나 다른 오류는 조용히 처리 (카카오 맵 정보는 선택사항)
       return NextResponse.json(
         { 
-          error: errorMessage,
-          status: response.status,
-          details: errorText 
+          error: "카카오 맵 정보를 찾을 수 없습니다.",
+          has_kakao_map_info: false,
         },
-        { status: response.status }
+        { status: 200 } // 404 대신 200으로 반환하여 앱이 중단되지 않도록
       );
     }
 
     const data = await response.json();
     
-    // 첫 번째 결과 반환 (모든 필드 포함)
+    // 검색 결과 중 첫 번째 결과 반환
     if (data.documents && data.documents.length > 0) {
       const place = data.documents[0];
       
@@ -70,9 +62,13 @@ export async function GET(
       });
     }
 
+    // 검색 결과가 없어도 에러로 처리하지 않음
     return NextResponse.json(
-      { error: "장소를 찾을 수 없습니다." },
-      { status: 404 }
+      { 
+        error: "카카오 맵 정보를 찾을 수 없습니다.",
+        has_kakao_map_info: false,
+      },
+      { status: 200 } // 404 대신 200으로 반환
     );
   } catch (error: any) {
     console.error("장소 상세 API 서버 오류:", error);
