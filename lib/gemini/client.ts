@@ -1,9 +1,12 @@
 /**
  * Google Gemini API 클라이언트
- * 무료 티어 사용 (15 RPM, 1500 RPD)
+ * 유료 티어 사용
  * 
- * 사용 모델: gemini-2.5-flash (최신 모델, 빠르고 무료 티어에 적합)
- * 대안: gemini-2.5-pro (더 강력하지만 느림)
+ * 사용 모델: gemini-2.5-flash (빠르고 효율적인 모델)
+ * - 빠른 응답 속도와 비용 효율성
+ * - Output Token Limit: 8,192 (간단한 요약에 충분)
+ * - Knowledge Cutoff: January 2025 (최신)
+ * - 간단한 요약 작업에 최적화
  * 
  * 참고: 최신 모델 목록은 https://ai.google.dev/gemini-api/docs/models 참조
  */
@@ -62,7 +65,7 @@ ${category ? `- 카테고리: ${category}` : ""}
 5. 응답은 반드시 세 줄로 구성되어야 합니다. 줄바꿈을 정확히 해주세요.
 6. 응답을 중간에 끊지 마세요. 반드시 세 가지를 모두 완성해주세요.`;
 
-    // 최신 Gemini API 모델 사용 (gemini-2.5-flash는 빠르고 무료 티어에 적합)
+    // 빠르고 효율적인 Gemini API 모델 사용 (간단한 요약에 적합)
     const modelName = "gemini-2.5-flash";
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
     
@@ -86,7 +89,7 @@ ${category ? `- 카테고리: ${category}` : ""}
           temperature: 0.3, // 더 일관된 응답을 위해 낮춤
           topK: 40,
           topP: 0.95,
-          maxOutputTokens: 1000, // 충분한 응답을 위해 대폭 증가
+          maxOutputTokens: 500, // 간단한 요약이므로 적당한 토큰 수로 설정
         },
       }),
     });
@@ -178,7 +181,7 @@ ${category ? `- 카테고리: ${category}` : ""}
                 temperature: 0.2, // 재시도 시 더 낮은 temperature로 일관성 확보
                 topK: 40,
                 topP: 0.95,
-                maxOutputTokens: 1000,
+                maxOutputTokens: 500, // 간단한 요약이므로 적당한 토큰 수로 설정
               },
             }),
           });
