@@ -26,6 +26,7 @@ export interface Place {
   rating: number | null;
   comment: string | null;
   status: PlaceStatus;
+  ai_summary: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -23,6 +23,7 @@ import {
   Utensils,
   Phone,
   Globe,
+  Sparkles,
 } from "lucide-react";
 import Image from "next/image";
 import { useState, useEffect } from "react";

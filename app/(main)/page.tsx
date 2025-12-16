@@ -351,7 +351,10 @@ export default function HomePage() {
               )}', '${(place.road_address_name || place.address_name).replace(
           /'/g,
           "\\'"
-        )}', '${place.y}', '${place.x}', '${place.id}')"
+        )}', '${place.y}', '${place.x}', '${place.id}', '${(place.category_name || "").replace(
+          /'/g,
+          "\\'"
+        )}')"
               style="
                 margin-top: 8px;
                 padding: 4px 8px;
@@ -489,7 +492,8 @@ export default function HomePage() {
       address: string,
       lat: string,
       lng: string,
-      placeId: string
+      placeId: string,
+      categoryName?: string
     ) => {
       const place: KakaoPlace = {
         id: placeId,
@@ -498,7 +502,7 @@ export default function HomePage() {
         road_address_name: address,
         x: lng,
         y: lat,
-        category_name: "",
+        category_name: categoryName || "",
         category_group_code: "",
         category_group_name: "",
         phone: "",
@@ -827,15 +831,18 @@ export default function HomePage() {
                                     >
                                       상세
                                     </Button>
-                                    <Button
-                                      size="sm"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        savePlaceMutation.mutate(place);
-                                      }}
-                                      disabled={savePlaceMutation.isPending}
-                                      className="h-8 px-3 text-xs rounded-xl bg-blue-500 hover:bg-blue-600 text-white shadow-lg shadow-blue-500/30"
-                                    >
+                                      <Button
+                                        size="sm"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          savePlaceMutation.mutate({
+                                            ...place,
+                                            category_name: place.category_name || "",
+                                          });
+                                        }}
+                                        disabled={savePlaceMutation.isPending}
+                                        className="h-8 px-3 text-xs rounded-xl bg-blue-500 hover:bg-blue-600 text-white shadow-lg shadow-blue-500/30"
+                                      >
                                       {savePlaceMutation.isPending ? (
                                         <Loader2 className="h-3 w-3 animate-spin" />
                                       ) : (

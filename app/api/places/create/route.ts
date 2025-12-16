@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getSupabaseUserIdFromCookie } from "@/lib/get-user-id";
 import { getGroupId } from "@/lib/get-group-id";
+import { generatePlaceSummary } from "@/lib/gemini/client";
 
 export async function POST(request: NextRequest) {
   try {
@@ -61,6 +62,19 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Gemini API로 장소 요약 생성 (비동기, 실패해도 계속 진행)
+    let aiSummary = "";
+    try {
+      aiSummary = await generatePlaceSummary(
+        body.name,
+        body.address,
+        body.category_name
+      );
+    } catch (error) {
+      console.error("AI 요약 생성 실패:", error);
+      // AI 요약 실패해도 장소 저장은 계속 진행
+    }
+
     // 장소 생성
     const { data, error } = await supabase
       .from("places")
@@ -75,6 +89,7 @@ export async function POST(request: NextRequest) {
         rating: body.rating,
         comment: body.comment,
         status: body.status,
+        ai_summary: aiSummary || null,
       })
       .select()
       .single();

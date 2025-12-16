@@ -62,6 +62,7 @@ export interface Database {
           rating: number | null;
           comment: string | null;
           status: "want_to_go" | "visited" | "want_to_visit_again";
+          ai_summary: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -77,6 +78,7 @@ export interface Database {
           rating?: number | null;
           comment?: string | null;
           status?: "want_to_go" | "visited" | "want_to_visit_again";
+          ai_summary?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -92,6 +94,7 @@ export interface Database {
           rating?: number | null;
           comment?: string | null;
           status?: "want_to_go" | "visited" | "want_to_visit_again";
+          ai_summary?: string | null;
           created_at?: string;
           updated_at?: string;
         };
