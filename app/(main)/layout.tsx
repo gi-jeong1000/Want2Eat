@@ -73,11 +73,13 @@ export default function MainLayout({
             <Logo size="md" />
             <div className="flex items-center gap-4">
               {user && (
-                <div className="px-3 py-1.5 rounded-full bg-gray-100">
-                  <span className="text-sm font-medium text-gray-700">
-                    {user.name}님
-                  </span>
-                </div>
+                <Link href="/profile">
+                  <div className="px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer">
+                    <span className="text-sm font-medium text-gray-700">
+                      {user.name}님
+                    </span>
+                  </div>
+                </Link>
               )}
               <div className="flex items-center gap-1">
                 <Link href="/">
@@ -131,11 +133,13 @@ export default function MainLayout({
           <div className="flex items-center justify-between">
             <Logo size="sm" />
             {user && (
-              <div className="px-3 py-1.5 rounded-full bg-gray-100">
-                <span className="text-xs font-medium text-gray-700">
-                  {user.name}님
-                </span>
-              </div>
+              <Link href="/profile">
+                <div className="px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer">
+                  <span className="text-xs font-medium text-gray-700">
+                    {user.name}님
+                  </span>
+                </div>
+              </Link>
             )}
           </div>
         </div>

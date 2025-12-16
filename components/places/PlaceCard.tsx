@@ -12,7 +12,6 @@ import {
   Calendar,
   User,
 } from "lucide-react";
-import Image from "next/image";
 import { PlaceStatus } from "@/types";
 import { getUserNameBySupabaseId } from "@/lib/get-user-name";
 
@@ -51,69 +50,53 @@ export function PlaceCard({ place }: PlaceCardProps) {
 
   return (
     <Link href={`/places/${place.id}`}>
-      <Card className="h-full hover:shadow-lg hover:scale-[1.02] transition-all duration-200 cursor-pointer overflow-hidden group">
-        {place.images && place.images.length > 0 ? (
-          <div className="relative h-48 w-full overflow-hidden rounded-t-lg">
-            <Image
-              src={place.images[0].image_url}
-              alt={place.name}
-              fill
-              className="object-cover group-hover:scale-110 transition-transform duration-300"
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              unoptimized
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="absolute top-2 right-2">
-              <div
-                className={`px-2 py-1 rounded-full text-xs font-medium ${statusInfo.bgColor} ${statusInfo.color} flex items-center gap-1`}
-              >
-                <StatusIcon className="h-3 w-3" />
-                {statusInfo.label}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="h-48 w-full bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center rounded-t-lg group-hover:from-blue-100 group-hover:via-indigo-100 group-hover:to-purple-100 transition-colors relative">
-            <MapPin className="h-12 w-12 text-muted-foreground opacity-50" />
-            <div className="absolute top-2 right-2">
-              <div
-                className={`px-2 py-1 rounded-full text-xs font-medium ${statusInfo.bgColor} ${statusInfo.color} flex items-center gap-1`}
-              >
-                <StatusIcon className="h-3 w-3" />
-                {statusInfo.label}
-              </div>
-            </div>
-          </div>
-        )}
+      <Card className="h-full hover:shadow-md hover:border-blue-300 transition-all duration-200 cursor-pointer group">
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-start justify-between gap-2">
-            <span className="flex-1 line-clamp-2">{place.name}</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 pt-0">
-          <div className="flex items-start text-sm text-muted-foreground">
-            <MapPin className="h-4 w-4 mr-1.5 mt-0.5 flex-shrink-0" />
-            <span className="line-clamp-1">{place.address}</span>
+          <div className="flex items-start justify-between gap-3 mb-2">
+            <CardTitle className="flex-1 line-clamp-2 text-lg font-bold group-hover:text-blue-600 transition-colors">
+              {place.name}
+            </CardTitle>
+            <div
+              className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusInfo.bgColor} ${statusInfo.color} flex items-center gap-1.5 flex-shrink-0`}
+            >
+              <StatusIcon className="h-3.5 w-3.5" />
+              {statusInfo.label}
+            </div>
           </div>
-          {place.rating && (
-            <div className="flex items-center text-sm">
-              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 mr-1.5" />
-              <span className="font-medium">{place.rating.toFixed(1)}</span>
-            </div>
-          )}
+        </CardHeader>
+        <CardContent className="space-y-3 pt-0">
+          <div className="flex items-start gap-2 text-sm text-gray-600">
+            <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-gray-400" />
+            <span className="line-clamp-2 leading-relaxed">{place.address}</span>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            {place.rating && (
+              <div className="flex items-center gap-1.5">
+                <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                <span className="font-semibold text-gray-900">{place.rating.toFixed(1)}</span>
+                <span className="text-gray-400">/ 5.0</span>
+              </div>
+            )}
+            {place.posts && place.posts.length > 0 && (
+              <div className="flex items-center gap-1.5 text-gray-500">
+                <span className="text-xs">📝</span>
+                <span className="text-xs">포스팅 {place.posts.length}개</span>
+              </div>
+            )}
+          </div>
+
           {place.comment && (
-            <p className="text-sm text-muted-foreground line-clamp-2 pt-1">
-              {place.comment}
-            </p>
-          )}
-          {place.posts && place.posts.length > 0 && (
-            <div className="flex items-center text-xs text-muted-foreground pt-1">
-              <span>📝 포스팅 {place.posts.length}개</span>
+            <div className="pt-2 border-t border-gray-100">
+              <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
+                {place.comment}
+              </p>
             </div>
           )}
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground pt-2 border-t">
-            <User className="h-3 w-3" />
-            <span>저장한 사람: {ownerName || "알 수 없음"}</span>
+
+          <div className="flex items-center gap-1.5 text-xs text-gray-500 pt-2 border-t border-gray-100">
+            <User className="h-3.5 w-3.5" />
+            <span>{ownerName || "알 수 없음"}</span>
           </div>
         </CardContent>
       </Card>
