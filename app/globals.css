@@ -140,5 +140,51 @@
   .gradient-secondary {
     @apply bg-gradient-to-br from-blue-50 to-sky-50;
   }
+
+  /* iOS 17 Glass 디자인 */
+  .glass-ios {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 
+      0 8px 32px 0 rgba(31, 38, 135, 0.15),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.6);
+  }
+
+  /* iOS 17 부드러운 애니메이션 */
+  .animate-ios-spring {
+    animation: iosSpring 0.5s cubic-bezier(0.36, 0, 0.66, -0.56);
+  }
+
+  @keyframes iosSpring {
+    0% {
+      transform: scale(0.95);
+      opacity: 0;
+    }
+    50% {
+      transform: scale(1.02);
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  /* iOS 17 부드러운 페이드 */
+  .animate-ios-fade {
+    animation: iosFade 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  @keyframes iosFade {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 }
 

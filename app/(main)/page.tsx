@@ -27,6 +27,8 @@ export default function HomePage() {
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [selectedPlaceDetail, setSelectedPlaceDetail] = useState<any>(null);
+  const [isSearchExpanded, setIsSearchExpanded] = useState(true);
+  const currentInfoWindowRef = useRef<any>(null); // 현재 열려있는 인포윈도우 추적
   const supabase = createClient();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -248,7 +250,13 @@ export default function HomePage() {
       });
 
       window.kakao.maps.event.addListener(marker, "click", () => {
+        // 이전 인포윈도우 닫기
+        if (currentInfoWindowRef.current) {
+          currentInfoWindowRef.current.close();
+        }
+        // 새 인포윈도우 열기
         infowindow.open(map, marker);
+        currentInfoWindowRef.current = infowindow;
       });
 
       newMarkers.push(marker);
@@ -360,7 +368,13 @@ export default function HomePage() {
       });
 
       window.kakao.maps.event.addListener(marker, "click", () => {
+        // 이전 인포윈도우 닫기
+        if (currentInfoWindowRef.current) {
+          currentInfoWindowRef.current.close();
+        }
+        // 새 인포윈도우 열기
         infowindow.open(map, marker);
+        currentInfoWindowRef.current = infowindow;
       });
 
       newSearchMarkers.push(marker);
@@ -410,6 +424,11 @@ export default function HomePage() {
   // 장소 상세 정보 조회
   const handleShowPlaceDetail = async (placeId: string) => {
     try {
+      // 인포윈도우 닫기
+      if (currentInfoWindowRef.current) {
+        currentInfoWindowRef.current.close();
+        currentInfoWindowRef.current = null;
+      }
       const detail = await getPlaceDetail(placeId);
       setSelectedPlaceDetail(detail);
     } catch (error: any) {
@@ -549,105 +568,142 @@ export default function HomePage() {
               )}
               <div ref={mapRef} className="w-full h-full" />
 
-              {/* 검색 바 */}
-              <div className="fixed md:absolute top-4 md:top-6 left-0 right-0 md:left-4 md:right-4 z-[100] max-w-md md:mx-auto px-4 md:px-0 animate-slide-up">
-                <Card className="shadow-soft-lg border-white/30">
-                  <CardContent className="p-4">
-                    <form onSubmit={handleSearch} className="flex gap-3">
-                      <div className="relative flex-1">
-                        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-sky-500 pointer-events-none" />
-                        <Input
-                          placeholder="장소 검색 (예: 강남역 맛집)"
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          className="pl-12 h-12 rounded-xl border-sky-200/50 bg-white/95 focus:border-sky-400 focus:ring-2 focus:ring-sky-200/50"
-                        />
+              {/* 검색 바 - iOS 17 Glass 디자인 */}
+              <div className={`fixed md:absolute left-0 right-0 md:left-4 md:right-4 z-[100] max-w-md md:mx-auto px-4 md:px-0 transition-all duration-500 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] ${
+                isSearchExpanded 
+                  ? "top-20 md:top-6 translate-y-0 opacity-100 scale-100" 
+                  : "top-4 md:top-6 -translate-y-full md:translate-y-0 opacity-0 md:opacity-100 scale-95 md:scale-100 pointer-events-none md:pointer-events-auto"
+              }`}>
+                <div className="glass-ios rounded-3xl shadow-2xl backdrop-blur-2xl border border-white/20 overflow-hidden">
+                  <div className="p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="flex-1">
+                        <form onSubmit={handleSearch} className="flex gap-2">
+                          <div className="relative flex-1">
+                            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-blue-500 pointer-events-none" />
+                            <Input
+                              placeholder="장소 검색 (예: 강남역 맛집)"
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              className="pl-12 h-11 rounded-2xl border-white/30 bg-white/40 backdrop-blur-xl focus:border-blue-400/50 focus:ring-2 focus:ring-blue-400/20 text-gray-900 placeholder:text-gray-500"
+                            />
+                          </div>
+                          <Button
+                            type="submit"
+                            disabled={isSearching || !searchQuery.trim()}
+                            size="lg"
+                            className="h-11 px-5 rounded-2xl bg-blue-500 hover:bg-blue-600 text-white shadow-lg shadow-blue-500/30"
+                          >
+                            {isSearching ? (
+                              <Loader2 className="h-5 w-5 animate-spin" />
+                            ) : (
+                              <Search className="h-5 w-5" />
+                            )}
+                          </Button>
+                          {searchQuery && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setSearchQuery("");
+                                setSearchResults([]);
+                                setShowSearchResults(false);
+                                setSelectedPlaceDetail(null);
+                                // 인포윈도우 닫기
+                                if (currentInfoWindowRef.current) {
+                                  currentInfoWindowRef.current.close();
+                                  currentInfoWindowRef.current = null;
+                                }
+                                searchMarkers.forEach((marker) =>
+                                  marker.setMap(null)
+                                );
+                                setSearchMarkers([]);
+                              }}
+                              className="h-11 px-3 rounded-2xl bg-white/40 hover:bg-white/60"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </form>
                       </div>
+                      {/* 접기/펼치기 버튼 (모바일만) */}
                       <Button
-                        type="submit"
-                        disabled={isSearching || !searchQuery.trim()}
-                        size="lg"
-                        className="h-12 px-6"
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setIsSearchExpanded(!isSearchExpanded)}
+                        className="md:hidden h-11 w-11 rounded-2xl bg-white/40 hover:bg-white/60 flex-shrink-0"
                       >
-                        {isSearching ? (
-                          <Loader2 className="h-5 w-5 animate-spin" />
+                        {isSearchExpanded ? (
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                          </svg>
                         ) : (
-                          <Search className="h-5 w-5" />
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
                         )}
                       </Button>
-                      {searchQuery && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setSearchQuery("");
-                            setSearchResults([]);
-                            setShowSearchResults(false);
-                            setSelectedPlaceDetail(null);
-                            // 검색 마커 제거
-                            searchMarkers.forEach((marker) =>
-                              marker.setMap(null)
-                            );
-                            setSearchMarkers([]);
-                          }}
-                          className="h-10 px-2"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </form>
-                  </CardContent>
-                </Card>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {/* 장소 상세 정보 모달 */}
+              {/* 장소 상세 정보 모달 - iOS 17 Glass 디자인 */}
               {selectedPlaceDetail && (
-                <div className="fixed md:absolute top-20 md:top-24 left-0 right-0 md:left-4 md:right-4 z-[100] max-w-md md:mx-auto px-4 md:px-0">
-                  <Card className="shadow-lg">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="font-semibold text-lg">
+                <div className="fixed md:absolute top-20 md:top-24 left-0 right-0 md:left-4 md:right-4 z-[100] max-w-md md:mx-auto px-4 md:px-0 animate-ios-spring">
+                  <div className="glass-ios rounded-3xl shadow-2xl backdrop-blur-2xl border border-white/20 overflow-hidden">
+                    <div className="p-5">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-bold text-lg text-gray-900">
                           장소 상세 정보
                         </h3>
                         <Button
                           variant="ghost"
-                          size="sm"
-                          onClick={() => setSelectedPlaceDetail(null)}
-                          className="h-8 w-8 p-0"
+                          size="icon"
+                          onClick={() => {
+                            setSelectedPlaceDetail(null);
+                            // 인포윈도우 닫기
+                            if (currentInfoWindowRef.current) {
+                              currentInfoWindowRef.current.close();
+                              currentInfoWindowRef.current = null;
+                            }
+                          }}
+                          className="h-9 w-9 rounded-2xl bg-white/40 hover:bg-white/60"
                         >
-                          <X className="h-4 w-4" />
+                          <X className="h-4 w-4 text-gray-700" />
                         </Button>
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         <div>
-                          <h4 className="font-semibold text-base">
+                          <h4 className="font-semibold text-base text-gray-900 mb-1">
                             {selectedPlaceDetail.place_name}
                           </h4>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-gray-600">
                             {selectedPlaceDetail.road_address_name ||
                               selectedPlaceDetail.address_name}
                           </p>
                         </div>
                         {selectedPlaceDetail.phone && (
-                          <p className="text-sm">
+                          <p className="text-sm text-gray-700">
                             <span className="font-medium">전화:</span>{" "}
                             {selectedPlaceDetail.phone}
                           </p>
                         )}
                         {selectedPlaceDetail.category_name && (
-                          <p className="text-sm">
+                          <p className="text-sm text-gray-700">
                             <span className="font-medium">카테고리:</span>{" "}
                             {selectedPlaceDetail.category_name}
                           </p>
                         )}
                         {selectedPlaceDetail.menu_info && (
                           <div className="mt-3">
-                            <p className="font-medium text-sm mb-1">
+                            <p className="font-medium text-sm mb-1 text-gray-900">
                               메뉴 정보:
                             </p>
                             <div
-                              className="text-sm text-muted-foreground whitespace-pre-line"
+                              className="text-sm text-gray-600 whitespace-pre-line"
                               dangerouslySetInnerHTML={{
                                 __html: selectedPlaceDetail.menu_info,
                               }}
@@ -659,24 +715,28 @@ export default function HomePage() {
                             href={selectedPlaceDetail.homepage}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-sm text-primary hover:underline"
+                            className="text-sm text-blue-600 hover:text-blue-700 hover:underline inline-block"
                           >
-                            홈페이지 보기
+                            홈페이지 보기 →
                           </a>
                         )}
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 </div>
               )}
 
-              {/* 검색 결과 리스트 */}
+              {/* 검색 결과 리스트 - iOS 17 Glass 디자인 */}
               {showSearchResults && (
-                <div className="fixed md:absolute top-20 md:top-28 left-0 right-0 md:left-4 md:right-4 z-[100] max-w-md md:mx-auto px-4 md:px-0 max-h-[calc(100vh-8rem)] overflow-y-auto animate-slide-up">
-                  <Card className="shadow-soft-lg border-sky-100/50">
-                    <CardContent className="p-5">
+                <div className={`fixed md:absolute left-0 right-0 md:left-4 md:right-4 z-[100] max-w-md md:mx-auto px-4 md:px-0 max-h-[calc(100vh-10rem)] overflow-y-auto transition-all duration-500 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] ${
+                  isSearchExpanded 
+                    ? "top-36 md:top-28 translate-y-0 opacity-100" 
+                    : "top-20 md:top-28 translate-y-0 opacity-100"
+                }`}>
+                  <div className="glass-ios rounded-3xl shadow-2xl backdrop-blur-2xl border border-white/20 overflow-hidden">
+                    <div className="p-5">
                       <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-bold text-lg gradient-text">
+                        <h3 className="font-bold text-lg text-gray-900">
                           {searchResults.length > 0
                             ? `검색 결과 (${searchResults.length}개)`
                             : "검색 결과"}
@@ -687,10 +747,15 @@ export default function HomePage() {
                           onClick={() => {
                             setShowSearchResults(false);
                             setSearchError(null);
+                            // 인포윈도우 닫기
+                            if (currentInfoWindowRef.current) {
+                              currentInfoWindowRef.current.close();
+                              currentInfoWindowRef.current = null;
+                            }
                           }}
-                          className="h-9 w-9 rounded-xl hover:bg-red-100/80"
+                          className="h-9 w-9 rounded-2xl bg-white/40 hover:bg-white/60"
                         >
-                          <X className="h-4 w-4 text-red-600" />
+                          <X className="h-4 w-4 text-gray-700" />
                         </Button>
                       </div>
                       {/* 검색 결과가 없거나 에러가 있을 때 */}
@@ -706,13 +771,18 @@ export default function HomePage() {
                       )}
                       {/* 검색 결과 리스트 */}
                       {searchResults.length > 0 && (
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           {searchResults.map((place) => {
                             return (
-                              <Card
+                              <div
                                 key={place.id}
-                                className="cursor-pointer hover:bg-gradient-to-r hover:from-sky-50 hover:to-blue-50 transition-all duration-300 hover:shadow-soft border-sky-100/50"
+                                className="cursor-pointer rounded-2xl bg-white/50 hover:bg-white/70 backdrop-blur-xl border border-white/40 p-4 transition-all duration-300 hover:shadow-lg hover:scale-[1.01] active:scale-[0.99] animate-ios-fade"
                                 onClick={() => {
+                                  // 인포윈도우 닫기
+                                  if (currentInfoWindowRef.current) {
+                                    currentInfoWindowRef.current.close();
+                                    currentInfoWindowRef.current = null;
+                                  }
                                   // 지도 중심 이동
                                   if (map && window.kakao) {
                                     const moveLatLon =
@@ -725,82 +795,68 @@ export default function HomePage() {
                                   }
                                 }}
                               >
-                                <CardContent className="p-3">
-                                  <div className="flex items-start justify-between gap-2">
-                                    <div className="flex-1 min-w-0">
-                                      <h4 className="font-semibold text-sm mb-1 truncate">
-                                        {place.place_name}
-                                      </h4>
-                                      <p className="text-xs text-muted-foreground line-clamp-1">
-                                        {place.road_address_name ||
-                                          place.address_name}
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className="font-semibold text-sm mb-1.5 truncate text-gray-900">
+                                      {place.place_name}
+                                    </h4>
+                                    <p className="text-xs text-gray-600 line-clamp-1 mb-1">
+                                      {place.road_address_name ||
+                                        place.address_name}
+                                    </p>
+                                    {place.category_name && (
+                                      <p className="text-xs text-gray-500 mt-1">
+                                        {place.category_name}
                                       </p>
-                                      {place.category_name && (
-                                        <p className="text-xs text-muted-foreground mt-1">
-                                          {place.category_name}
-                                        </p>
-                                      )}
-                                      {place.phone && (
-                                        <p className="text-xs text-muted-foreground mt-1">
-                                          📞 {place.phone}
-                                        </p>
-                                      )}
-                                    </div>
-                                    <div className="flex flex-col gap-1">
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={async (e) => {
-                                          e.stopPropagation();
-                                          await handleShowPlaceDetail(place.id);
-                                        }}
-                                        className="h-8 px-3 text-xs flex-shrink-0"
-                                      >
-                                        상세
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          savePlaceMutation.mutate(place);
-                                        }}
-                                        disabled={savePlaceMutation.isPending}
-                                        className="h-8 px-3 text-xs flex-shrink-0"
-                                      >
-                                        {savePlaceMutation.isPending ? (
-                                          <Loader2 className="h-3 w-3 animate-spin" />
-                                        ) : (
-                                          <>
-                                            <Plus className="h-3 w-3 mr-1" />
-                                            저장
-                                          </>
-                                        )}
-                                      </Button>
-                                    </div>
+                                    )}
+                                    {place.phone && (
+                                      <p className="text-xs text-gray-500 mt-1">
+                                        📞 {place.phone}
+                                      </p>
+                                    )}
                                   </div>
-                                </CardContent>
-                              </Card>
+                                  <div className="flex flex-col gap-2 flex-shrink-0">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        await handleShowPlaceDetail(place.id);
+                                      }}
+                                      className="h-8 px-3 text-xs rounded-xl bg-white/60 hover:bg-white/80 border-white/40"
+                                    >
+                                      상세
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        savePlaceMutation.mutate(place);
+                                      }}
+                                      disabled={savePlaceMutation.isPending}
+                                      className="h-8 px-3 text-xs rounded-xl bg-blue-500 hover:bg-blue-600 text-white shadow-lg shadow-blue-500/30"
+                                    >
+                                      {savePlaceMutation.isPending ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                      ) : (
+                                        <>
+                                          <Plus className="h-3 w-3 mr-1" />
+                                          저장
+                                        </>
+                                      )}
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
                             );
                           })}
                         </div>
                       )}
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 </div>
               )}
 
-              {/* 저장된 장소 개수 표시 */}
-              {places && places.length > 0 && (
-                <div className="fixed md:absolute bottom-20 md:bottom-6 left-4 right-4 md:left-auto md:right-6 z-[100] animate-fade-in max-w-xs md:max-w-none">
-                  <Card className="shadow-soft-lg border-sky-100/50 bg-gradient-to-r from-sky-500/10 to-blue-500/10">
-                    <CardContent className="p-3 md:p-4">
-                      <p className="text-sm font-bold gradient-text text-center md:text-left">
-                        저장된 장소: {places.length}개
-                      </p>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
             </>
           )}
         </>

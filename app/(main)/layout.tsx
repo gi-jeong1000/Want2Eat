@@ -128,7 +128,7 @@ export default function MainLayout({
       </nav>
 
       {/* 모바일: 상단 헤더 (제목만) */}
-      <nav className="md:hidden border-b border-white/20 glass sticky top-0 z-50">
+      <nav className="md:hidden border-b border-gray-200 bg-white/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <Logo size="sm" />

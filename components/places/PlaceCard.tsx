@@ -13,10 +13,10 @@ import {
   User,
 } from "lucide-react";
 import { PlaceStatus } from "@/types";
-import { getUserNameBySupabaseId } from "@/lib/get-user-name";
 
 interface PlaceCardProps {
   place: PlaceWithImages;
+  userName?: string;
 }
 
 const statusConfig: Record<
@@ -43,10 +43,9 @@ const statusConfig: Record<
   },
 };
 
-export function PlaceCard({ place }: PlaceCardProps) {
+export function PlaceCard({ place, userName }: PlaceCardProps) {
   const statusInfo = statusConfig[place.status];
   const StatusIcon = statusInfo.icon;
-  const ownerName = getUserNameBySupabaseId(place.user_id);
 
   return (
     <Link href={`/places/${place.id}`}>
@@ -96,7 +95,7 @@ export function PlaceCard({ place }: PlaceCardProps) {
 
           <div className="flex items-center gap-1.5 text-xs text-gray-500 pt-2 border-t border-gray-100">
             <User className="h-3.5 w-3.5" />
-            <span>{ownerName || "알 수 없음"}</span>
+            <span>{userName || "로딩 중..."}</span>
           </div>
         </CardContent>
       </Card>

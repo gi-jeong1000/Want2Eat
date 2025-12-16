@@ -7,7 +7,7 @@ import { Place, PlaceWithImages } from "@/types";
 import { PlaceCard } from "@/components/places/PlaceCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search } from "lucide-react";
 import Link from "next/link";
 
@@ -16,6 +16,7 @@ import { PlaceStatus } from "@/types";
 export default function PlacesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | PlaceStatus>("all");
+  const [userNames, setUserNames] = useState<Record<string, string>>({});
   const supabase = createClient();
 
   const { data: places, isLoading } = useQuery({
@@ -37,6 +38,40 @@ export default function PlacesPage() {
       return data as PlaceWithImages[];
     },
   });
+
+  // 사용자 이름 가져오기
+  useEffect(() => {
+    if (!places || places.length === 0) return;
+
+    const fetchUserNames = async () => {
+      const userIds = new Set<string>();
+      places.forEach((place) => {
+        if (place.user_id) userIds.add(place.user_id);
+      });
+
+      const namePromises = Array.from(userIds).map(async (userId) => {
+        try {
+          const response = await fetch(`/api/users/${userId}`);
+          if (response.ok) {
+            const data = await response.json();
+            return { userId, name: data.name };
+          }
+        } catch (err) {
+          console.error(`사용자 ${userId} 이름 조회 실패:`, err);
+        }
+        return { userId, name: "알 수 없음" };
+      });
+
+      const results = await Promise.all(namePromises);
+      const nameMap: Record<string, string> = {};
+      results.forEach(({ userId, name }) => {
+        nameMap[userId] = name;
+      });
+      setUserNames(nameMap);
+    };
+
+    fetchUserNames();
+  }, [places]);
 
   const filteredPlaces = places?.filter((place) => {
     const matchesSearch =
@@ -96,7 +131,11 @@ export default function PlacesPage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredPlaces.map((place) => (
-              <PlaceCard key={place.id} place={place} />
+              <PlaceCard 
+                key={place.id} 
+                place={place} 
+                userName={userNames[place.user_id]}
+              />
             ))}
           </div>
         </>
