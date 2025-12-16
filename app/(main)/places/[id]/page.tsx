@@ -87,6 +87,28 @@ export default function PlaceDetailPage() {
     }
   }, [place?.naver_place_id]);
 
+  // AI 요약이 없으면 자동으로 생성 요청
+  useEffect(() => {
+    if (place && !place.ai_summary && placeId) {
+      // 비동기로 AI 요약 생성 요청 (응답을 기다리지 않음)
+      fetch(`/api/places/${placeId}/generate-summary`, {
+        method: "POST",
+        credentials: "include",
+      })
+        .then((response) => {
+          if (response.ok) {
+            // 요약 생성 성공 시 쿼리 무효화하여 다시 조회
+            setTimeout(() => {
+              queryClient.invalidateQueries({ queryKey: ["place", placeId] });
+            }, 2000); // 2초 후 다시 조회
+          }
+        })
+        .catch((err) => {
+          console.error("AI 요약 생성 요청 실패:", err);
+        });
+    }
+  }, [place, placeId, queryClient]);
+
   // 사용자 이름 가져오기
   useEffect(() => {
     if (!place) return;

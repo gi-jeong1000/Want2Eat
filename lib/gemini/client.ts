@@ -26,18 +26,29 @@ export async function generatePlaceSummary(
   }
 
   try {
-    const prompt = `다음 맛집 정보를 바탕으로 한 줄로 간단하고 매력적인 요약과 평가를 작성해주세요. 
-장소명: ${placeName}
-주소: ${address}
-${category ? `카테고리: ${category}` : ""}
+    const prompt = `당신은 음식 평론가입니다.
+
+지금부터 제공하는 식당 장소, 위치를 기반으로 가장 최신의 정보를 취합하여 식당에 대한 평점과 한줄평, 추천 메뉴를 간결하게 요약해주세요.
+
+식당 정보:
+- 식당 이름: ${placeName}
+- 정확한 주소: ${address}
+${category ? `- 카테고리: ${category}` : ""}
 
 요구사항:
-- 한 줄로 작성 (최대 100자)
-- 맛집의 특징과 추천 포인트를 간단히 언급
-- 친근하고 긍정적인 톤으로 작성
-- 이모지나 특수문자 사용 금지
+1. 평점: 5점 만점 기준으로 평가 (예: ⭐4.2/5.0)
+2. 한줄평: 식당의 특징과 분위기를 간결하게 한 줄로 작성 (최대 80자)
+3. 추천 메뉴: 대표 메뉴 1-2개를 간단히 제시
 
-예시 형식: "신선한 재료와 정성스러운 요리로 유명한 곳으로, 분위기 좋은 데이트 코스로 추천합니다."`;
+응답 형식:
+평점: ⭐X.X/5.0
+한줄평: [한 줄 요약]
+추천 메뉴: [메뉴명]
+
+예시:
+평점: ⭐4.3/5.0
+한줄평: 신선한 재료와 정성스러운 요리로 유명한 곳으로, 분위기 좋은 데이트 코스로 추천합니다.
+추천 메뉴: 특제 스테이크, 시그니처 파스타`;
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
@@ -60,7 +71,7 @@ ${category ? `카테고리: ${category}` : ""}
             temperature: 0.7,
             topK: 40,
             topP: 0.95,
-            maxOutputTokens: 150,
+            maxOutputTokens: 200,
           },
         }),
       }

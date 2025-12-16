@@ -4,6 +4,48 @@ import { getSupabaseUserIdFromCookie } from "@/lib/get-user-id";
 import { getGroupId } from "@/lib/get-group-id";
 import { generatePlaceSummary } from "@/lib/gemini/client";
 
+/**
+ * AI 요약 생성을 비동기로 처리하는 헬퍼 함수
+ */
+async function generatePlaceSummaryAsync(
+  placeId: string,
+  placeName: string,
+  address: string,
+  category?: string
+) {
+  try {
+    const aiSummary = await generatePlaceSummary(placeName, address, category);
+    
+    if (!aiSummary) {
+      return;
+    }
+
+    // Supabase 클라이언트 생성
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return;
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
+
+    // 데이터베이스에 요약 업데이트
+    await supabase
+      .from("places")
+      .update({ ai_summary: aiSummary })
+      .eq("id", placeId);
+  } catch (error) {
+    console.error("AI 요약 생성 실패 (비동기):", error);
+    // 에러는 무시 (이미 장소 저장은 완료됨)
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -62,20 +104,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Gemini API로 장소 요약 생성 (비동기, 실패해도 계속 진행)
-    let aiSummary = "";
-    try {
-      aiSummary = await generatePlaceSummary(
-        body.name,
-        body.address,
-        body.category_name
-      );
-    } catch (error) {
-      console.error("AI 요약 생성 실패:", error);
-      // AI 요약 실패해도 장소 저장은 계속 진행
-    }
-
-    // 장소 생성
+    // 장소 생성 (AI 요약은 별도로 비동기 처리)
     const { data, error } = await supabase
       .from("places")
       .insert({
@@ -89,7 +118,7 @@ export async function POST(request: NextRequest) {
         rating: body.rating,
         comment: body.comment,
         status: body.status,
-        ai_summary: aiSummary || null,
+        ai_summary: null, // 초기값은 null, 나중에 비동기로 생성
       })
       .select()
       .single();
@@ -102,6 +131,17 @@ export async function POST(request: NextRequest) {
           details: error.details || error.hint || ""
         },
         { status: 500 }
+      );
+    }
+
+    // AI 요약 생성을 백그라운드로 비동기 처리 (응답을 기다리지 않음)
+    if (data && data.id) {
+      // 비동기로 처리하여 응답을 블로킹하지 않음
+      generatePlaceSummaryAsync(data.id, body.name, body.address, body.category_name).catch(
+        (err) => {
+          console.error("AI 요약 생성 실패 (비동기):", err);
+          // 실패해도 장소 저장은 이미 완료되었으므로 무시
+        }
       );
     }
 
