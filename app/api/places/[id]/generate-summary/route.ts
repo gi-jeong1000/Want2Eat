@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getSupabaseUserIdFromCookie } from "@/lib/get-user-id";
-import { generatePlaceSummary } from "@/lib/gemini/client";
+import { generatePlaceSummary, generatePlaceSummaryFromReviews } from "@/lib/gemini/client";
+import { searchNaverBlogs } from "@/lib/naver-search/client";
+import { refineBlogData } from "@/lib/naver-search/refine";
 
 /**
  * 장소 AI 요약 생성 API
@@ -106,6 +108,30 @@ export async function POST(
       );
     }
 
+    // 네이버 블로그 검색 (할루시네이션 방지)
+    let blogData = null;
+    try {
+      console.log("네이버 블로그 검색 시작:", {
+        placeName: place.name,
+      });
+      
+      const blogItems = await searchNaverBlogs(place.name, 10);
+      
+      if (blogItems.length > 0) {
+        blogData = refineBlogData(blogItems);
+        console.log("네이버 블로그 검색 성공:", {
+          blogCount: blogItems.length,
+          refinedTitles: blogData.titles.length,
+          refinedSummaries: blogData.summaries.length,
+        });
+      } else {
+        console.warn("네이버 블로그 검색 결과가 없습니다. 기존 방식으로 진행합니다.");
+      }
+    } catch (error) {
+      console.warn("네이버 블로그 검색 실패:", error);
+      // 블로그 검색 실패해도 계속 진행
+    }
+
     // Gemini API로 요약 생성
     let aiSummary = "";
     try {
@@ -113,14 +139,26 @@ export async function POST(
         placeName: place.name,
         address: place.address,
         category: category || "없음",
+        hasBlogData: !!blogData,
         apiKeyExists: !!geminiApiKey,
       });
       
-      aiSummary = await generatePlaceSummary(
-        place.name,
-        place.address,
-        category
-      );
+      // 블로그 데이터가 있으면 리뷰 기반 분석, 없으면 기존 방식
+      if (blogData && blogData.combinedText.length > 0) {
+        aiSummary = await generatePlaceSummaryFromReviews(
+          place.name,
+          place.address,
+          blogData,
+          category
+        );
+      } else {
+        // 폴백: 기존 방식
+        aiSummary = await generatePlaceSummary(
+          place.name,
+          place.address,
+          category
+        );
+      }
       
       console.log("Gemini API 응답:", {
         hasSummary: !!aiSummary,

@@ -18,7 +18,7 @@
 - **State Management**: React Query, Zustand
 - **Database**: Supabase (PostgreSQL)
 - **Storage**: Supabase Storage
-- **External APIs**: 네이버 지도 API, 네이버 검색 API
+- **External APIs**: 카카오 지도 API, 네이버 검색 API, Google Gemini API
 - **Deployment**: Vercel
 
 
@@ -36,7 +36,9 @@ npm run dev
 
 1. **Supabase 설정**: `docs/SUPABASE_SETUP.md` 참고
 2. **카카오 API 설정**: `docs/KAKAO_API_SETUP.md` 참고
-3. **모임 설정**: `docs/GROUP_SETUP.md` 참고 (모임 생성 및 구성원 추가)
+3. **네이버 검색 API 설정**: `docs/NAVER_API_SETUP.md` 참고 (블로그 리뷰 수집용)
+4. **Gemini API 설정**: `docs/GEMINI_API_SETUP.md` 참고 (AI 요약 생성용)
+5. **모임 설정**: `docs/GROUP_SETUP.md` 참고 (모임 생성 및 구성원 추가)
 
 ## 프로젝트 구조
 
@@ -53,5 +55,8 @@ npm run dev
 3. **장소 상세**: 
    - 누가 저장했는지 확인
    - 카카오맵 기반 사진 및 정보
+   - **AI 기반 요약**: 네이버 블로그 리뷰를 분석하여 할루시네이션 없는 요약 제공
+     - 평점, 한줄평, 추천 메뉴
+     - 실제 블로그 리뷰 기반 "언급 경향" 분석
    - 구성원들과 코멘트 작성
    - 방문 기록 포스팅

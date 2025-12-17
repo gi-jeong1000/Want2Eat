@@ -23,6 +23,174 @@ interface GeminiResponse {
   }>;
 }
 
+/**
+ * 블로그 리뷰 기반으로 장소 요약 생성 (할루시네이션 방지)
+ */
+export async function generatePlaceSummaryFromReviews(
+  placeName: string,
+  address: string,
+  blogData: { titles: string[]; summaries: string[]; combinedText: string },
+  category?: string
+): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    console.warn("Gemini API 키가 설정되지 않았습니다. AI 요약을 생성할 수 없습니다.");
+    return "";
+  }
+
+  try {
+    const prompt = `아래는 "${placeName}" (${address})에 대해 사람들이 작성한 블로그 검색 결과 요약이다.
+
+${blogData.combinedText}
+
+**중요 지침:**
+- 확정적인 사실은 단정하지 말고, 반복적으로 언급되는 메뉴나 특징이 있다면 '언급 경향'으로 정리하라.
+- 블로그에서 실제로 언급된 내용만 기반으로 작성하라.
+- 블로그에 없는 정보는 추측하지 마라.
+- "블로그에서는", "리뷰에서 자주 언급되는", "반복적으로 등장하는" 등의 표현을 사용하라.
+
+**반드시 다음 세 가지 정보를 모두 포함하여 응답해주세요:**
+
+1. 평점: 블로그 리뷰를 종합하여 5점 만점 기준으로 평가 (소수점 첫째 자리까지, 예: 4.2, 4.5, 4.8)
+2. 한줄평: 블로그에서 언급되는 메뉴와 특징을 바탕으로 작성 (50-100자, 반드시 완전한 문장)
+   - 예: "블로그 리뷰에서 '갈비탕'과 '육개장' 메뉴가 자주 언급되며, '진한 국물'과 '부드러운 고기'라는 표현이 반복적으로 등장합니다. 가성비가 좋다는 평가가 많고, 가족 모임이나 회식 장소로 추천되는 경우가 많습니다."
+3. 추천 메뉴: 블로그에서 자주 언급되는 메뉴 1-2개 (반드시 블로그에 언급된 메뉴만, "블로그에서 자주 언급됨" 표시)
+
+**응답 형식 (정확히 이 형식을 따라주세요):**
+평점: ⭐X.X/5.0
+한줄평: [블로그 리뷰 기반 언급 경향 설명]
+추천 메뉴: [메뉴명1, 메뉴명2] (블로그에서 자주 언급됨)
+
+**예시 응답:**
+평점: ⭐4.2/5.0
+한줄평: 블로그 리뷰에서 "갈비탕"과 "육개장" 메뉴가 자주 언급되며, "진한 국물"과 "부드러운 고기"라는 표현이 반복적으로 등장합니다. 가성비가 좋다는 평가가 많고, 가족 모임이나 회식 장소로 추천되는 경우가 많습니다.
+추천 메뉴: 갈비탕, 육개장 (블로그에서 자주 언급됨)
+
+**절대 지켜야 할 규칙:**
+1. 블로그에 없는 정보는 작성하지 마라.
+2. 확정적인 사실은 단정하지 말고, "언급 경향"으로 표현하라.
+3. 반드시 세 가지(평점, 한줄평, 추천 메뉴)를 모두 작성해야 한다.
+4. 응답을 중간에 끊지 마라.`;
+
+    // 빠르고 효율적인 Gemini API 모델 사용
+    const modelName = "gemini-2.5-flash";
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+    
+    // 타임아웃 설정 (60초)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    
+    let response: Response;
+    try {
+      response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: prompt,
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.3,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 2000,
+          },
+        }),
+      });
+      
+      clearTimeout(timeoutId);
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        console.error("❌ Gemini API 요청 타임아웃 (60초 초과)");
+        return "";
+      }
+      throw fetchError;
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Gemini API 오류:", {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText,
+      });
+      return "";
+    }
+
+    // 응답 전체를 먼저 텍스트로 읽어서 확인
+    const responseText = await response.text();
+    let data: GeminiResponse;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error("❌ JSON 파싱 실패:", parseError);
+      return "";
+    }
+
+    if (
+      data.candidates &&
+      data.candidates[0]?.content?.parts?.[0]?.text
+    ) {
+      const candidate = data.candidates[0];
+      let summary = candidate.content.parts[0].text.trim();
+      const finishReason = candidate.finishReason || "UNKNOWN";
+      
+      const hasRating = summary.includes("평점:");
+      const hasReview = summary.includes("한줄평:");
+      const hasMenu = summary.includes("추천 메뉴:");
+      
+      console.log("🔍 Gemini API 응답 검증 (리뷰 기반):", {
+        hasRating,
+        hasReview,
+        hasMenu,
+        summaryLength: summary.length,
+        finishReason: finishReason,
+      });
+      
+      if (finishReason === "MAX_TOKENS") {
+        console.warn("⚠️ 응답이 토큰 제한에 걸렸습니다.");
+      } else if (finishReason !== "STOP") {
+        console.warn(`⚠️ 응답이 비정상적으로 종료되었습니다. finishReason: ${finishReason}`);
+      }
+      
+      const isComplete = hasRating && hasReview && hasMenu;
+      
+      if (!isComplete) {
+        console.error("❌ Gemini API 응답이 불완전합니다:", {
+          hasRating,
+          hasReview,
+          hasMenu,
+          summaryLength: summary.length,
+        });
+        return summary; // 불완전해도 반환
+      }
+      
+      return summary;
+    }
+
+    return "";
+  } catch (error) {
+    console.error("Gemini API 호출 중 오류:", error);
+    return "";
+  }
+}
+
+/**
+ * 기존 함수 (하위 호환성 유지)
+ * 블로그 데이터가 없을 때 사용
+ */
 export async function generatePlaceSummary(
   placeName: string,
   address: string,
