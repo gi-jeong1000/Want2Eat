@@ -21,12 +21,14 @@ interface NaverSearchResponse {
 
 /**
  * 네이버 블로그 검색
- * @param query 검색어 (식당 이름)
+ * @param placeName 식당 이름
+ * @param address 식당 주소 (선택)
  * @param display 가져올 결과 수 (최대 100)
  * @returns 블로그 검색 결과
  */
 export async function searchNaverBlogs(
-  query: string,
+  placeName: string,
+  address?: string,
   display: number = 10
 ): Promise<NaverBlogItem[]> {
   const clientId = process.env.NAVER_CLIENT_ID;
@@ -38,7 +40,20 @@ export async function searchNaverBlogs(
   }
 
   try {
-    const url = `https://openapi.naver.com/v1/search/blog?query=${encodeURIComponent(query)}&display=${Math.min(display, 100)}&sort=sim`;
+    // 식당 이름과 주소를 조합하여 더 구체적으로 검색
+    let searchQuery = placeName;
+    if (address) {
+      // 주소에서 구/동 정보 추출하여 검색어에 추가
+      const addressParts = address.split(/\s+/);
+      const district = addressParts.find(part => part.includes('구') || part.includes('동'));
+      if (district) {
+        searchQuery = `${placeName} ${district}`;
+      } else {
+        searchQuery = `${placeName} ${address}`;
+      }
+    }
+    
+    const url = `https://openapi.naver.com/v1/search/blog?query=${encodeURIComponent(searchQuery)}&display=${Math.min(display, 100)}&sort=sim`;
     
     const response = await fetch(url, {
       headers: {

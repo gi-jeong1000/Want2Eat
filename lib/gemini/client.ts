@@ -40,6 +40,13 @@ export async function generatePlaceSummaryFromReviews(
   }
 
   try {
+    // 블로그 데이터가 없거나 비어있으면 관련 정보 없음으로 응답
+    if (!blogData || blogData.combinedText.length === 0 || blogData.titles.length === 0) {
+      return `평점: ⭐0.0/5.0
+한줄평: 이 식당에 대한 블로그 리뷰 정보를 찾을 수 없습니다.
+추천 메뉴: 정보 없음`;
+    }
+
     const prompt = `아래는 "${placeName}" (${address})에 대해 사람들이 작성한 블로그 검색 결과 요약이다.
 
 ${blogData.combinedText}
@@ -49,6 +56,7 @@ ${blogData.combinedText}
 - 블로그에서 실제로 언급된 내용만 기반으로 작성하라.
 - 블로그에 없는 정보는 추측하지 마라.
 - "블로그에서는", "리뷰에서 자주 언급되는", "반복적으로 등장하는" 등의 표현을 사용하라.
+- 블로그 검색 결과가 없거나 관련 정보가 부족하면 "관련 정보가 없습니다"라고 명확히 표시하라.
 
 **반드시 다음 세 가지 정보를 모두 포함하여 응답해주세요:**
 

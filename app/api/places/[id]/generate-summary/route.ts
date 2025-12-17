@@ -110,22 +110,29 @@ export async function POST(
 
     // 네이버 블로그 검색 (할루시네이션 방지)
     let blogData = null;
+    let hasBlogResults = false;
     try {
       console.log("네이버 블로그 검색 시작:", {
         placeName: place.name,
+        address: place.address,
       });
       
-      const blogItems = await searchNaverBlogs(place.name, 10);
+      const blogItems = await searchNaverBlogs(place.name, place.address, 10);
       
       if (blogItems.length > 0) {
         blogData = refineBlogData(blogItems);
+        hasBlogResults = blogData.titles.length > 0 && blogData.summaries.length > 0;
         console.log("네이버 블로그 검색 성공:", {
           blogCount: blogItems.length,
           refinedTitles: blogData.titles.length,
           refinedSummaries: blogData.summaries.length,
+          hasValidData: hasBlogResults,
         });
       } else {
-        console.warn("네이버 블로그 검색 결과가 없습니다. 기존 방식으로 진행합니다.");
+        console.warn("네이버 블로그 검색 결과가 없습니다:", {
+          placeName: place.name,
+          address: place.address,
+        });
       }
     } catch (error) {
       console.warn("네이버 블로그 검색 실패:", error);
@@ -143,8 +150,8 @@ export async function POST(
         apiKeyExists: !!geminiApiKey,
       });
       
-      // 블로그 데이터가 있으면 리뷰 기반 분석, 없으면 기존 방식
-      if (blogData && blogData.combinedText.length > 0) {
+      // 블로그 데이터가 있고 유효한 결과가 있으면 리뷰 기반 분석
+      if (hasBlogResults && blogData && blogData.combinedText.length > 0 && blogData.titles.length > 0) {
         aiSummary = await generatePlaceSummaryFromReviews(
           place.name,
           place.address,
@@ -152,12 +159,16 @@ export async function POST(
           category
         );
       } else {
-        // 폴백: 기존 방식
-        aiSummary = await generatePlaceSummary(
-          place.name,
-          place.address,
-          category
-        );
+        // 블로그 검색 결과가 없으면 "관련 정보 없음" 메시지 반환
+        console.log("블로그 검색 결과가 없어 관련 정보 없음으로 응답합니다:", {
+          hasBlogResults,
+          hasBlogData: !!blogData,
+          blogDataLength: blogData?.combinedText.length || 0,
+          blogTitlesLength: blogData?.titles.length || 0,
+        });
+        aiSummary = `평점: ⭐0.0/5.0
+한줄평: 이 식당에 대한 블로그 리뷰 정보를 찾을 수 없습니다.
+추천 메뉴: 정보 없음`;
       }
       
       console.log("Gemini API 응답:", {
