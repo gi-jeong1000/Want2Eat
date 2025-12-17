@@ -7,6 +7,8 @@ import { generatePlaceSummary } from "@/lib/gemini/client";
  * 장소 AI 요약 생성 API
  * 장소 저장과 별개로 비동기로 처리됩니다.
  */
+export const maxDuration = 60; // Vercel에서 최대 60초까지 허용 (기본값 10초)
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

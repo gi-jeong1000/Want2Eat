@@ -18,6 +18,8 @@ interface GeminiResponse {
         text: string;
       }>;
     };
+    finishReason?: string; // STOP, MAX_TOKENS, SAFETY, RECITATION, 등
+    finishMessage?: string;
   }>;
 }
 
@@ -70,30 +72,47 @@ ${category ? `- 카테고리: ${category}` : ""}
     const modelName = "gemini-2.5-flash";
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
     
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey, // 헤더에도 API 키 포함 (권장 방식)
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: prompt,
-              },
-            ],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.3, // 더 일관된 응답을 위해 낮춤
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 1000, // 응답이 잘리는 것을 방지하기 위해 충분히 설정
+    // 타임아웃 설정 (60초)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    
+    let response: Response;
+    try {
+      response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey, // 헤더에도 API 키 포함 (권장 방식)
         },
-      }),
-    });
+        signal: controller.signal, // 타임아웃 시그널 추가
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: prompt,
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.3, // 더 일관된 응답을 위해 낮춤
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 1000, // 응답이 잘리는 것을 방지하기 위해 충분히 설정
+          },
+        }),
+      });
+      
+      clearTimeout(timeoutId); // 성공 시 타임아웃 클리어
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        console.error("❌ Gemini API 요청 타임아웃 (60초 초과)");
+        return "";
+      }
+      throw fetchError;
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -122,26 +141,55 @@ ${category ? `- 카테고리: ${category}` : ""}
       return "";
     }
 
-    const data: GeminiResponse = await response.json();
+    // 응답 전체를 먼저 텍스트로 읽어서 확인
+    const responseText = await response.text();
+    console.log("🔍 Gemini API 원본 응답 (전체):", {
+      responseLength: responseText.length,
+      responsePreview: responseText.substring(0, 500),
+      fullResponse: responseText, // 전체 응답 로깅
+    });
+    
+    // JSON 파싱
+    let data: GeminiResponse;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error("❌ JSON 파싱 실패:", parseError);
+      console.error("원본 응답:", responseText);
+      return "";
+    }
 
     if (
       data.candidates &&
       data.candidates[0]?.content?.parts?.[0]?.text
     ) {
-      let summary = data.candidates[0].content.parts[0].text.trim();
+      const candidate = data.candidates[0];
+      let summary = candidate.content.parts[0].text.trim();
+      const finishReason = candidate.finishReason || "UNKNOWN";
+      const finishMessage = candidate.finishMessage || "";
       
       // 응답에 세 가지 항목이 모두 포함되어 있는지 확인
       const hasRating = summary.includes("평점:");
       const hasReview = summary.includes("한줄평:");
       const hasMenu = summary.includes("추천 메뉴:");
       
-      console.log("Gemini API 응답 검증:", {
+      console.log("🔍 Gemini API 응답 검증:", {
         hasRating,
         hasReview,
         hasMenu,
         summaryLength: summary.length,
+        finishReason: finishReason,
+        finishMessage: finishMessage,
         summaryPreview: summary.substring(0, 300),
+        fullSummary: summary, // 전체 요약 로깅
       });
+      
+      // finishReason 확인
+      if (finishReason === "MAX_TOKENS") {
+        console.warn("⚠️ 응답이 토큰 제한에 걸렸습니다. maxOutputTokens를 늘려야 합니다.");
+      } else if (finishReason !== "STOP") {
+        console.warn(`⚠️ 응답이 비정상적으로 종료되었습니다. finishReason: ${finishReason}, finishMessage: ${finishMessage}`);
+      }
       
       // 응답이 완전한지 최종 확인
       const isComplete = hasRating && hasReview && hasMenu;
